@@ -61,8 +61,13 @@ mkdir -p /mnt/AlignmentQCTask
 rm -rf /tmp/AlignmentQCTask* /tmp/9c09bca7-8ffa-54fe-a1c9-3f8a71df515b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask
 
 # another test
-  
+
 git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask --max-jobs 1
+
+# now test sequence QC runner
+mkdir -p /tmp/SequenceQCTask
+rm -rf /tmp/SequenceQCTask*; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --local-scheduler --es-index-host localhost --es-index-port 9200
+
 ```
 
 Monitor on the web GUI:
@@ -121,6 +126,3 @@ This script runs an unlimited number of BAM file uploads at random intervals.  T
 
     # temp
     git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask --max-jobs 1
-
-
-
