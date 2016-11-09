@@ -53,7 +53,8 @@ class SequenceQCCoordinator(luigi.Task):
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
-        res = es.search(index="analysis_index", body={"query":{"filtered":{"filter":{"bool":{"must":{"or":[{"terms":{"flags.normal_sequence_qc_report":["false"]}},{"terms":{"flags.tumor_sequence_qc_report":["false"]}}]}}},"query":{"match_all":{}}}}}, size=5000)
+        #res = es.search(index="analysis_index", body={"query":{"filtered":{"filter":{"bool":{"must":{"or":[{"terms":{"flags.normal_sequence_qc_report":["false"]}},{"terms":{"flags.tumor_sequence_qc_report":["false"]}}]}}},"query":{"match_all":{}}}}}, size=5000)
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_sequence_qc_report" : "false"}},{"term" : {"flags.tumor_sequence_qc_report" : "false"               }}],"minimum_should_match" : 1}}}, size=5000)
 
         listOfJobs = []
 
