@@ -76,6 +76,8 @@ Make sure both luigi and elasticsearch are running in screen sessions.
 
     # screen session 1
     ~/elasticsearch-2.3.5/bin/elasticsearch &
+    # or if you use service (as you should)
+    sudo service elasticsearch restart
     # screen session 2
     source env/bin/activate
     luigid
