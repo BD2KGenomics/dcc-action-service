@@ -52,12 +52,18 @@ TODO: need to document the install of the Consonance command line.
 
 ## Manually Calling
 
-    # example run (local mode)
-    rm -rf /tmp/AlignmentQCTask* /tmp/afb54dff-41ad-50e5-9c66-8671c53a278b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --local-scheduler --es-index-host localhost --es-index-port 9200
+```
+# example run (local mode)
+rm -rf /tmp/AlignmentQCTask* /tmp/afb54dff-41ad-50e5-9c66-8671c53a278b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --local-scheduler --es-index-host localhost --es-index-port 9200
+
+# run with central scheduler
+mkdir -p /mnt/AlignmentQCTask
+rm -rf /tmp/AlignmentQCTask* /tmp/9c09bca7-8ffa-54fe-a1c9-3f8a71df515b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask
+
+# another test
   
-    # run with central scheduler
-    mkdir -p /mnt/AlignmentQCTask
-    rm -rf /tmp/AlignmentQCTask* /tmp/9c09bca7-8ffa-54fe-a1c9-3f8a71df515b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask
+git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask --max-jobs 1
+```
 
 ## Demo
 
