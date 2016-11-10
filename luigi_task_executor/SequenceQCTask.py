@@ -65,7 +65,7 @@ class SequenceQCCoordinator(luigi.Task):
                 for sample in specimen["samples"]:
                     for analysis in sample["analysis"]:
                         print "MAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
-                        if analysis["analysis_type"] == "sequence_upload"
+                        if analysis["analysis_type"] == "sequence_upload":
                         #and (hit["_source"]["flags"]["normal_sequence_qc_report"] == False and re.match("^Normal - ", specimen["submitter_specimen_type"])) or (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour -", specimen["submitter_specimen_type"])):
                             print analysis
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
