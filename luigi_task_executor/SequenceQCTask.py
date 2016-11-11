@@ -27,6 +27,7 @@ from elasticsearch import Elasticsearch
 
 class ConsonanceTask(luigi.Task):
     ucsc_storage_host = luigi.Parameter()
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
     filenames = luigi.ListParameter(default="[filename]")
     uuid = luigi.Parameter(default="NA")
     bundle_uuid = luigi.Parameter(default="NA")
@@ -43,6 +44,7 @@ class ConsonanceTask(luigi.Task):
         # create a json for FastQC
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
         p = self.output()[0].open('w')
+        # TODO: need to loop here for each file
         print >>p, '''{
   "fastq_file": [
     {
@@ -60,16 +62,11 @@ class ConsonanceTask(luigi.Task):
         # create a json for dockstoreRunningDockstoreTool, embed the FastQC JSON as a param
         p = self.output()[0].open('w')
         print >>p, '''{
-        "fastq_file": [
-        {
-        "class": "File",
-        "path": "redwood://%s/%s"
-        },
-        {
-        "class": "File",
-        "path": "redwood://%s/%s"
-        }
-        ]
+            "json_encoded": "<base64encoded>",
+            "dockstore_uri": "quay.io/briandoconnor/dockstore-tool-bamstats",
+            "redwood_token": "<token>",
+            "redwood_host": "<host>",
+            "parent_uuid": "<parent_uuid>"
         }''' % (bundle_uuid, uuid[0], bundle_uuid, uuid[1]) # TODO: can't assume two!
         p.close()
         # execute consonance run, parse the job UUID
