@@ -68,12 +68,12 @@ class SequenceQCCoordinator(luigi.Task):
                         if analysis["analysis_type"] == "sequence_upload" and ((hit["_source"]["flags"]["normal_sequence_qc_report"] == False and re.match("^Normal - ", specimen["submitter_specimen_type"])) or (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour -", specimen["submitter_specimen_type"]))):
                             #print analysis
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
-                            bamFile = ""
+                            files = []
                             for file in analysis["workflow_outputs"]:
                                 if (file["file_type"] == "fastq"):
                                     # this will need to be an array
-                                    bamFile = file["file_path"]
-                            print "  + will run report for %s" % bamFile
+                                    files.append(file["file_path"])
+                            print "  + will run report for %s" % files
                             #if len(listOfJobs) < int(self.max_jobs):
                             #    listOfJobs.append(SequenceQCTaskUploader(ucsc_storage_client_path=self.ucsc_storage_client_path, ucsc_storage_host=self.ucsc_storage_host, filename=bamFile, uuid=self.fileToUUID(bamFile, analysis["bundle_uuid"]), bundle_uuid=analysis["bundle_uuid"], parent_uuid=sample["sample_uuid"], tmp_dir=self.tmp_dir, data_dir=self.data_dir))
 
