@@ -4,6 +4,7 @@ import time
 import re
 import datetime
 import subprocess
+import base64
 from urllib import urlopen
 from uuid import uuid4
 from elasticsearch import Elasticsearch
@@ -26,48 +27,53 @@ from elasticsearch import Elasticsearch
 # rm -rf /tmp/SequenceQCTask* /tmp/afb54dff-41ad-50e5-9c66-8671c53a278b; PYTHONPATH='' luigi --module SequenceQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 &> log.txt
 
 class ConsonanceTask(luigi.Task):
-    ucsc_storage_host = luigi.Parameter()
+    redwood_host = luigi.Parameter("https://storage2.ucsc-cgl.org")
+    redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
     filenames = luigi.ListParameter(default="[filename]")
-    uuid = luigi.Parameter(default="NA")
-    bundle_uuid = luigi.Parameter(default="NA")
-    parent_uuid = luigi.Parameter(default="NA")
-    # I don't think I need these anymore
+    file_uuids = luigi.ListParameter(default="[uuid]]")
+    bundle_uuids = luigi.ListParameter(default="[bundle_uuid]")
+    parent_uuids = luigi.Parameter(default="parent_uuid1,parent_uuid2")
     tmp_dir = luigi.Parameter(default='/tmp')
-    data_dir = luigi.Parameter(default='/tmp/data_dir')
     new_uuid = str(uuid4())
 
     def run(self):
         print "** EXECUTING IN CONSONANCE **"
         # create a unique temp dir
         cmd = '''mkdir -p %s/consonance-jobs/%s/''' % (self.tmp_dir, self.new_uuid)
-        # create a json for FastQC
+        # create a json for FastQC which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
-        p = self.output()[0].open('w')
         # TODO: need to loop here for each file
-        print >>p, '''{
-  "fastq_file": [
-    {
-        "class": "File",
-        "path": "redwood://%s/%s"
-    },
-    {
-        "class": "File",
-        "path": "redwood://%s/%s"
-    }
-  ]
-}''' % (bundle_uuid, uuid[0], bundle_uuid, uuid[1]) # TODO: can't assume two!
-        p.close()
+        json_str = '''{
+"fastq_file": [
+        '''
+        i = 0
+        while i<len(self.filenames):
+            # append file information
+            json_str += '''
+{
+    "class": "File",
+    "path": "redwood://%s/%s/%s"
+}
+            ''' % (self.bundle_uuids[i], self.file_uuids[i], self.filenames[i])
+            if i < len(self.filenames) - 1:
+                json_str += ","
+            i += 1
+        json_str += ''']
+}
+        '''
+        # now make base64 encoded version
+        base64_json_str = base64.urlsafe_b64encode(json_str)
         # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
         # create a json for dockstoreRunningDockstoreTool, embed the FastQC JSON as a param
         p = self.output()[0].open('w')
         print >>p, '''{
-            "json_encoded": "<base64encoded>",
-            "dockstore_uri": "quay.io/briandoconnor/dockstore-tool-bamstats",
-            "redwood_token": "<token>",
-            "redwood_host": "<host>",
-            "parent_uuid": "<parent_uuid>"
-        }''' % (bundle_uuid, uuid[0], bundle_uuid, uuid[1]) # TODO: can't assume two!
+            "json_encoded": "%s",
+            "dockstore_uri": "quay.io/wshands/fastqc",
+            "redwood_token": "%s",
+            "redwood_host": "%s",
+            "parent_uuids": "[%s]"
+        }''' % (base64_json_str, self.self.redwood_token, self.self.redwood_host, self.parent_uuids) 
         p.close()
         # execute consonance run, parse the job UUID
         # loop to check the consonance status until finished or failed
