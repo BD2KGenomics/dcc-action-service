@@ -9,41 +9,28 @@ from urllib import urlopen
 from uuid import uuid4
 from elasticsearch import Elasticsearch
 
-# TODO:
-# * need a tool that takes bundle ID and file path and converts to file_id for downloading by Dockstore CLI
-# * I can fire off a Dockstore CLI to write the data back but who makes a metadata.json?  Should I add this to Dockstore CLI?  Add it here?
-#   Probably, for now I can do everything in this task (maybe distinct tasks for download, upload, tool run)
-#   and then, over time, push this out to Dockstore CLI.
-#   So, effectively, I use Luigi really as a workflow but, ultimately, this will need to move out to worker VMs via Consonance and be done via
-#   Dockstore CLI (or Toil) in order to gain flexibility.
-# * need to move file outputs used to track running of steps to S3
-# * am I doing sufficient error checking?
-# * how do I deal with concurrency?  How can I run these concurrently?
-# FIXME:
-# * this doc makes it sounds like I will need to do some tracking of what's previously been run to prevent duplicates from launching? https://luigi.readthedocs.io/en/stable/tasks.html#dynamic-dependencies
-# RUNNING
-# $> rm /tmp/foo-*; PYTHONPATH='' luigi --module SequenceQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200
-# * index builder: 1) needs correct filetype and 2) needs just the filename and not the relative file path (exclude directories)
-# rm -rf /tmp/SequenceQCTask* /tmp/afb54dff-41ad-50e5-9c66-8671c53a278b; PYTHONPATH='' luigi --module SequenceQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 &> log.txt
-
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("https://storage2.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
+    target_tool = luigi.Parameter(default="quay.io/wshands/fastqc")
     filenames = luigi.ListParameter(default="[filename]")
     file_uuids = luigi.ListParameter(default="[uuid]]")
     bundle_uuids = luigi.ListParameter(default="[bundle_uuid]")
+    # TODO: just modeling this as a string comma sep, need to actually ensure this is a JSON array
     parent_uuids = luigi.Parameter(default="parent_uuid1,parent_uuid2")
     tmp_dir = luigi.Parameter(default='/tmp')
     new_uuid = str(uuid4())
 
     def run(self):
         print "** EXECUTING IN CONSONANCE **"
+        print "** MAKE TEMP DIR **"
         # create a unique temp dir
         cmd = '''mkdir -p %s/consonance-jobs/%s/''' % (self.tmp_dir, self.new_uuid)
+        print "** MAKE JSON FOR WORKER **"
         # create a json for FastQC which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
+        # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
-        # TODO: need to loop here for each file
         json_str = '''{
 "fastq_file": [
         '''
@@ -64,39 +51,33 @@ class ConsonanceTask(luigi.Task):
         '''
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
-        # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
+        print "** MAKE JSON FOR DOCKSTORE WRAPPER "+self.output()[0]+" **"
         # create a json for dockstoreRunningDockstoreTool, embed the FastQC JSON as a param
         p = self.output()[0].open('w')
         print >>p, '''{
             "json_encoded": "%s",
-            "dockstore_uri": "quay.io/wshands/fastqc",
+            "dockstore_uri": "%s",
             "redwood_token": "%s",
             "redwood_host": "%s",
             "parent_uuids": "[%s]"
-        }''' % (base64_json_str, self.self.redwood_token, self.self.redwood_host, self.parent_uuids) 
+        }''' % (base64_json_str, self.target_tool, self.self.redwood_token, self.self.redwood_host, self.parent_uuids)
         p.close()
         # execute consonance run, parse the job UUID
-        # loop to check the consonance status until finished or failed
-
+        print "** SUBMITTING TO CONSONANCE **"
         print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor sample_configs.json"
+        # loop to check the consonance status until finished or failed
+        print "** WAITING FOR CONSONANCE **"
         print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
-        cmd = '''mkdir -p %s/%s/consonance-jobs/%s %s/%s/manifest/%s && ln -s %s/%s/bamstats_report.zip %s/%s/metadata.json %s/%s/upload/%s && \
-echo "Register Uploads:" && \
-java -Djavax.net.ssl.trustStore=%s/ssl/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dserver.baseUrl=%s:8444 -DaccessToken=`cat %s/accessToken` -jar %s/dcc-metadata-client-0.0.16-SNAPSHOT/lib/dcc-metadata-client.jar -i %s/%s/upload/%s -o %s/%s/manifest/%s -m manifest.txt && \
-echo "Performing Uploads:" && \
-java -Djavax.net.ssl.trustStore=%s/ssl/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dmetadata.url=%s:8444 -Dmetadata.ssl.enabled=true -Dclient.ssl.custom=false -Dstorage.url=%s:5431 -DaccessToken=`cat %s/accessToken` -jar %s/icgc-storage-client-1.0.14-SNAPSHOT/lib/icgc-storage-client.jar upload --force --manifest %s/%s/manifest/%s/manifest.txt
-''' % (self.tmp_dir, self.bundle_uuid, self.upload_uuid, self.tmp_dir, self.bundle_uuid, self.upload_uuid, self.data_dir, self.bundle_uuid, self.tmp_dir, self.bundle_uuid, self.tmp_dir, self.bundle_uuid, self.upload_uuid, self.ucsc_storage_client_path, self.ucsc_storage_host, self.ucsc_storage_client_path, self.ucsc_storage_client_path, self.tmp_dir, self.bundle_uuid, self.upload_uuid, self.tmp_dir, self.bundle_uuid, self.upload_uuid, self.ucsc_storage_client_path, self.ucsc_storage_host, self.ucsc_storage_host, self.ucsc_storage_client_path, self.ucsc_storage_client_path, self.tmp_dir, self.bundle_uuid, self.upload_uuid)
-        print "CMD: "+cmd
-        result = subprocess.call(cmd, shell=True)
-        if result == 0:
-            cmd = "rm -rf "+self.data_dir+"/"+self.bundle_uuid+"/bamstats_report.zip "+self.data_dir+"/"+self.bundle_uuid+"/datastore/"
-            print "CLEANUP CMD: "+cmd
-            result = subprocess.call(cmd, shell=True)
-            if result == 0:
-                print "CLEANUP SUCCESSFUL"
-            f = self.output().open('w')
-            print >>f, "uploaded"
-            f.close()
+#        result = subprocess.call(cmd, shell=True)
+#        if result == 0:
+#            cmd = "rm -rf "+self.data_dir+"/"+self.bundle_uuid+"/bamstats_report.zip "+self.data_dir+"/"+self.bundle_uuid+"/datastore/"
+#            print "CLEANUP CMD: "+cmd
+#            result = subprocess.call(cmd, shell=True)
+#            if result == 0:
+#                print "CLEANUP SUCCESSFUL"
+#            f = self.output().open('w')
+#            print >>f, "uploaded"
+#            f.close()
 
     def output(self):
         return luigi.LocalTarget('%s/%s/uploaded' % (self.tmp_dir, self.bundle_uuid))
