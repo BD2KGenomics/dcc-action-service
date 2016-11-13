@@ -58,7 +58,7 @@ class ConsonanceTask(luigi.Task):
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print "** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **"
         # create a json for dockstoreRunningDockstoreTool, embed the FastQC JSON as a param
-        p = self.output()[0].open('w')
+        p = self.output().open('w')
         print >>p, '''{
             "json_encoded": "%s",
             "dockstore_uri": "%s",
