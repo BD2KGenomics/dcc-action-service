@@ -140,7 +140,7 @@ class SequenceQCCoordinator(luigi.Task):
                                 if (file["file_type"] == "fastq"):
                                     # this will need to be an array
                                     files.append(file["file_path"])
-                                    file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"])
+                                    file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                     bundle_uuids.append(analysis["bundle_uuid"])
                                     parent_uuids.append(sample["sample_uuid"])
                             print "  + will run report for %s" % files
