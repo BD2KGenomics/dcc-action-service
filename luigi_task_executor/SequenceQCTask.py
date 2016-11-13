@@ -65,7 +65,7 @@ class ConsonanceTask(luigi.Task):
             "redwood_token": "%s",
             "redwood_host": "%s",
             "parent_uuids": "[%s]"
-        }''' % (base64_json_str, self.target_tool, self.self.redwood_token, self.self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)))
+        }''' % (base64_json_str, self.target_tool, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)))
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
