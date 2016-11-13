@@ -85,7 +85,7 @@ class ConsonanceTask(luigi.Task):
 #            f.close()
 
     def output(self):
-        return luigi.LocalTarget('%s/consonance-jobs/%s/finished' % (self.tmp_dir, self.bundle_uuid))
+        return luigi.LocalTarget('%s/consonance-jobs/%s/finished' % (self.tmp_dir, self.new_uuid))
 
 class SequenceQCCoordinator(luigi.Task):
 
