@@ -54,6 +54,7 @@ class ConsonanceTask(luigi.Task):
         json_str += ''']
 }
         '''
+        print "THE JSON: "+json_str
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print "** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **"
