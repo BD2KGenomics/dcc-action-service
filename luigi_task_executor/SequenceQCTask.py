@@ -16,12 +16,13 @@ class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage2.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
-    target_tool = luigi.Parameter(default="quay.io/wshands/fastqc")
+    target_tool = luigi.Parameter(default="quay.io/wshands/fastqc:latest")
+    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/wshands/fastqc")
+    workflow_type = luigi.Parameter(default="sequence_upload_qc_report")
     filenames = luigi.ListParameter(default=["filename"])
     file_uuids = luigi.ListParameter(default=["uuid"])
     bundle_uuids = luigi.ListParameter(default=["bundle_uuid"])
-    # TODO: just modeling this as a string comma sep, need to actually ensure this is a JSON array
-    parent_uuids = luigi.ListParameter(default=["parent_uuid1"])
+    parent_uuids = luigi.ListParameter(default=["parent_uuid"])
     tmp_dir = luigi.Parameter(default='/tmp')
     new_uuid = str(uuid4())
 
@@ -29,8 +30,11 @@ class ConsonanceTask(luigi.Task):
         print "** EXECUTING IN CONSONANCE **"
         print "** MAKE TEMP DIR **"
         # create a unique temp dir
-        cmd = '''mkdir -p %s/consonance-jobs/%s/''' % (self.tmp_dir, self.new_uuid)
+        cmd = '''mkdir -p %s/consonance-jobs/SequenceQCCoordinator/%s/''' % (self.tmp_dir, self.new_uuid)
         print cmd
+        result = subprocess.call(cmd, shell=True)
+        if result != 0:
+            print "PROBLEMS MAKING DIR!!"
         print "** MAKE JSON FOR WORKER **"
         # create a json for FastQC which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
         # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
@@ -51,6 +55,38 @@ class ConsonanceTask(luigi.Task):
             if i < len(self.filenames) - 1:
                 json_str += ","
             i += 1
+        json_str += '''],
+"report_files" : [
+        '''
+        i = 0
+        while i<len(self.filenames):
+            # append file information
+            new_filename = self.filenames[i].replace('.fastq.gz', '.html')
+            json_str += '''
+{
+    "class": "File",
+    "path": "./tmp/%s"
+}
+            ''' % (new_filename)
+            if i < len(self.filenames) - 1:
+                json_str += ","
+            i += 1
+        json_str += '''],
+"zipped_files" : [
+        '''
+        i = 0
+        while i<len(self.filenames):
+            # append file information
+            new_filename = self.filenames[i].replace('.fastq.gz', '.zip')
+            json_str += '''
+{
+    "class": "File",
+    "path": "./tmp/%s"
+}
+            ''' % (new_filename)
+            if i < len(self.filenames) - 1:
+                json_str += ","
+            i += 1
         json_str += ''']
 }
         '''
@@ -62,11 +98,13 @@ class ConsonanceTask(luigi.Task):
         p = self.output().open('w')
         print >>p, '''{
             "json_encoded": "%s",
-            "dockstore_uri": "%s",
+            "docker_uri": "%s",
+            "dockstore_url": "%s",
             "redwood_token": "%s",
             "redwood_host": "%s",
-            "parent_uuids": "[%s]"
-        }''' % (base64_json_str, self.target_tool, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)))
+            "parent_uuids": "[%s]",
+            "workflow_type": "%s"
+        }''' % (base64_json_str, self.target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)), self.workflow_type )
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
@@ -86,7 +124,7 @@ class ConsonanceTask(luigi.Task):
 #            f.close()
 
     def output(self):
-        return luigi.LocalTarget('%s/consonance-jobs/%s/finished' % (self.tmp_dir, self.new_uuid))
+        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/finished.json' % (self.tmp_dir, self.new_uuid))
 
 class SequenceQCCoordinator(luigi.Task):
 
@@ -165,7 +203,7 @@ class SequenceQCCoordinator(luigi.Task):
         # the final report
         ts = time.time()
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
-        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCTask-%s.txt' % (self.tmp_dir, ts_str))
+        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/SequenceQCTask-%s.txt' % (self.tmp_dir, ts_str))
 
     def fileToUUID(self, input, bundle_uuid):
         return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]
