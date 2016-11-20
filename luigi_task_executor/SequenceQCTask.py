@@ -104,6 +104,7 @@ class SequenceQCCoordinator(luigi.Task):
     def requires(self):
         print "** COORDINATOR **"
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
+        print str("https://"+self.redwood_host+":8444/entities?page=0")
         json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0")).read()
         metadata_struct = json.loads(json_str)
         print "** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"])
