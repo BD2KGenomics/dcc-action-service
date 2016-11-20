@@ -93,7 +93,7 @@ class SequenceQCCoordinator(luigi.Task):
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_storage_client_path = luigi.Parameter(default='../ucsc-storage-client')
+    redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
     redwood_host = luigi.Parameter(default='storage2.ucsc-cgl.org')
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
     tmp_dir = luigi.Parameter(default='/tmp')
