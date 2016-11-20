@@ -157,7 +157,6 @@ class SequenceQCCoordinator(luigi.Task):
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
-        #res = es.search(index="analysis_index", body={"query":{"filtered":{"filter":{"bool":{"must":{"or":[{"terms":{"flags.normal_sequence_qc_report":["false"]}},{"terms":{"flags.tumor_sequence_qc_report":["false"]}}]}}},"query":{"match_all":{}}}}}, size=5000)
         res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_sequence_qc_report" : "false"}},{"term" : {"flags.tumor_sequence_qc_report" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         listOfJobs = []
@@ -177,7 +176,7 @@ class SequenceQCCoordinator(luigi.Task):
                             bundle_uuids = []
                             parent_uuids = []
                             for file in analysis["workflow_outputs"]:
-                                if (file["file_type"] == "fastq"):
+                                if (file["file_type"] == "fastq" or file["file_type"] == "fastq.gz"):
                                     # this will need to be an array
                                     files.append(file["file_path"])
                                     file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
@@ -186,9 +185,6 @@ class SequenceQCCoordinator(luigi.Task):
                             print "  + will run report for %s" % files
                             if len(listOfJobs) < int(self.max_jobs):
                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids, tmp_dir=self.tmp_dir))
-                                # target_tool= # TODO: fill in params filenames=['']
-                                #redwood_storage_client_path=self.redwood_storage_client_path, redwood_host=self.redwood_host, filename=bamFile, uuid=self.fileToUUID(bamFile, analysis["bundle_uuid"]), bundle_uuid=analysis["bundle_uuid"], parent_uuid=sample["sample_uuid"], tmp_dir=self.tmp_dir, data_dir=self.data_dir))
-
         # these jobs are yielded to
         return listOfJobs
 
