@@ -174,17 +174,17 @@ class SequenceQCCoordinator(luigi.Task):
                             files = []
                             file_uuids = []
                             bundle_uuids = []
-                            parent_uuids = []
+                            parent_uuids = {}
                             for file in analysis["workflow_outputs"]:
                                 if (file["file_type"] == "fastq" or file["file_type"] == "fastq.gz"):
                                     # this will need to be an array
                                     files.append(file["file_path"])
                                     file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                     bundle_uuids.append(analysis["bundle_uuid"])
-                                    parent_uuids.append(sample["sample_uuid"])
+                                    parent_uuids[sample["sample_uuid"]] = True
                             print "  + will run report for %s" % files
                             if len(listOfJobs) < int(self.max_jobs):
-                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids, tmp_dir=self.tmp_dir))
+                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
         # these jobs are yielded to
         return listOfJobs
 
