@@ -60,13 +60,12 @@ rm -rf /tmp/AlignmentQCTask* /tmp/afb54dff-41ad-50e5-9c66-8671c53a278b; PYTHONPA
 mkdir -p /mnt/AlignmentQCTask
 rm -rf /tmp/AlignmentQCTask* /tmp/9c09bca7-8ffa-54fe-a1c9-3f8a71df515b; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask
 
-# another test
-
+# another test with AlignmentQC
 git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask AlignmentQCCoordinator --es-index-host localhost --es-index-port 9200 --ucsc-storage-client-path ../ucsc-storage2-client --ucsc-storage-host https://storage2.ucsc-cgl.org --tmp-dir `pwd`/luigi_state --data-dir /mnt/AlignmentQCTask --max-jobs 1
 
-# now test sequence QC runner
-mkdir -p /tmp/SequenceQCTask
-rm -rf /tmp/SequenceQCTask*; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --local-scheduler --es-index-host localhost --es-index-port 9200
+# now test sequence QC runner (can use --local-scheduler for local schedule)
+cd luigi_task_executor
+rm -rf /tmp/consonance-jobs; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --es-index-host localhost --es-index-port 9200 --redwood-token `cat ../accessToken` --redwood-client-path ../ucsc-storage-client --redwood-host storage2.ucsc-cgl.org --tmp-dir /tmp --data-dir /mnt/SequenceQCTask --max-jobs 1
 
 ```
 
