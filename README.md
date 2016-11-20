@@ -114,6 +114,17 @@ This script runs an unlimited number of BAM file uploads at random intervals.  T
     --storage-access-token `cat ../ucsc-storage2-client/accessToken` --metadata-server-url https://storage2.ucsc-cgl.org:8444 \
     --storage-server-url https://storage2.ucsc-cgl.org:5431  --ucsc-storage-client-path ../ucsc-storage2-client
 
+Another script, this time it simulates the upload of fastq files:
+
+    cd luigi_task_executor
+    python simulate_upload_rnaseq_fastq.py --fastq-r1-path \
+    https://s3.amazonaws.com/oconnor-test-bucket/sample-data/ERR030886_1.fastq.gz \
+    --fastq-r2-path https://s3.amazonaws.com/oconnor-test-bucket/sample-data/ERR030886_2.fastq.gz \
+    --input-metadata-schema ../input_metadata.json --metadata-schema ../metadata_schema.json \
+    --output-dir output_metadata --receipt-file receipt.tsv \
+    --storage-access-token `cat ../ucsc-storage2-client/accessToken` --metadata-server-url https://storage2.ucsc-cgl.org:8444 \
+    --storage-server-url https://storage2.ucsc-cgl.org:5431  --ucsc-storage-client-path ../ucsc-storage2-client
+
 ### simulate_indexing.py
 
     cd luigi_task_executor

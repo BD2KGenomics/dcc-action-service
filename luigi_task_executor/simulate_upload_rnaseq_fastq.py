@@ -8,8 +8,8 @@ def getOptions():
 
     parser = argparse.ArgumentParser(description='Directory that contains Json files.')
 
-    parser.add_argument("-f1", "--fastq-r1-path", default="ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR030/ERR030886/ERR030886_1.fastq.gz", help="Path to R1 RNASeq fastq")
-    parser.add_argument("-f2", "--fastq-r2-path", default="ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR030/ERR030886/ERR030886_2.fastq.gz", help="Path to R2 RNASeq fastq")
+    parser.add_argument("-f1", "--fastq-r1-path", default="https://s3.amazonaws.com/oconnor-test-bucket/sample-data/ERR030886_1.fastq.gz", help="Path to R1 RNASeq fastq")
+    parser.add_argument("-f2", "--fastq-r2-path", default="https://s3.amazonaws.com/oconnor-test-bucket/sample-data/ERR030886_2.fastq.gz", help="Path to R2 RNASeq fastq")
     parser.add_argument("-i", "--input-metadata-schema", default="input_metadata.json", help="flattened json schema file for input metadata")
     parser.add_argument("-m", "--metadata-schema", default="metadata_schema.json", help="flattened json schema file for metadata")
     parser.add_argument("-d", "--output-dir", default="output_metadata", help="output directory. In the case of colliding file names, the older file will be overwritten.")
