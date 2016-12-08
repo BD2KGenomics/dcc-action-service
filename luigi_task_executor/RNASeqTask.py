@@ -7,7 +7,6 @@ import subprocess
 import base64
 from urllib import urlopen
 from uuid import uuid4
-from uuid import uuid5 # generates the same UUID for a given namespace and name string
 from elasticsearch import Elasticsearch
 
 #for hack to get around non self signed certificates
