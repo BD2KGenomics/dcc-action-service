@@ -6,7 +6,11 @@ import datetime
 import subprocess
 import base64
 from urllib import urlopen
+
+import uuid
 from uuid import uuid4
+from uuid import uuid5
+
 from elasticsearch import Elasticsearch
 
 #for hack to get around non self signed certificates
@@ -40,14 +44,16 @@ class ConsonanceTask(luigi.Task):
     parent_uuids = luigi.ListParameter(default=["parent_uuid"])
     tmp_dir = luigi.Parameter(default='/tmp')
 
-    new_uuid = luigi.Parameter(default=str(uuid4()), significant=False)
-#    new_uuid=str(uuid4())
-
     def run(self):
         print "** EXECUTING IN CONSONANCE **"
         print "** MAKE TEMP DIR **"
+
+        #get a unique id for this task based on the some inputs
+        #this id will not change if the inputs are the same
+        task_uuid = self.get_task_uuid()
+
         # create a unique temp dir
-        cmd = '''mkdir -p %s/consonance-jobs/RNASeqCoordinator/%s/''' % (self.tmp_dir, self.new_uuid)
+        cmd = '''mkdir -p %s/consonance-jobs/RNASeqCoordinator/%s/''' % (self.tmp_dir, task_uuid)
         print cmd
         result = subprocess.call(cmd, shell=True)
         if result != 0:
@@ -188,8 +194,8 @@ class ConsonanceTask(luigi.Task):
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print "** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **"
-        # create a json for dockstoreRunningDockstoreTool, embed the FastQC JSON as a param
-        p = self.output().open('w')
+        # create a json for dockstoreRunningDockstoreTool, embed the RNA-Seq JSON as a param
+        p = self.save_json().open('w')
         print >>p, '''{
             "json_encoded": "%s",
             "docker_uri": "%s",
@@ -217,9 +223,31 @@ class ConsonanceTask(luigi.Task):
 #            f = self.output().open('w')
 #            print >>f, "uploaded"
 #            f.close()
+         # now make a final report
+        f = self.output().open('w')
+        # TODO: could print report on what was successful and what failed?  Also, provide enough details like donor ID etc
+        print >>f, "Consonance task is complete"
+        f.close()
+
+    def get_task_uuid(self):
+        #get a unique id for this task based on the some inputs
+        #this id will not change if the inputs are the same
+        #This helps make the task idempotent; it that it
+        #always has the same task id for the same inputs
+        #TODO??? should this be based on all the inputs
+        #including the path to star, kallisto, rsem and
+        #save BAM, etc.???
+        task_uuid = uuid5(uuid.NAMESPACE_DNS, ''.join(map("'{0}'".format, self.filenames)) + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)) + self.workflow_type)
+#        print("task uuid:%s",str(task_uuid))
+        return task_uuid
+
+    def save_json(self):
+        task_uuid = self.get_task_uuid()
+        return luigi.LocalTarget('%s/consonance-jobs/RNASeqCoordinator/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
 
     def output(self):
-        return luigi.LocalTarget('%s/consonance-jobs/RNASeqCoordinator/%s/finished.json' % (self.tmp_dir, self.new_uuid))
+        task_uuid = self.get_task_uuid()
+        return luigi.LocalTarget('%s/consonance-jobs/RNASeqCoordinator/%s/finished.txt' % (self.tmp_dir, task_uuid))
 
 class RNASeqCoordinator(luigi.Task):
 
@@ -235,7 +263,7 @@ class RNASeqCoordinator(luigi.Task):
     bundle_uuid_filename_to_file_uuid = {}
 
     def requires(self):
-        print "** COORDINATOR **"
+        print "\n\n\n\n** COORDINATOR REQUIRES **"
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
         print str("https://"+self.redwood_host+":8444/entities?page=0")
 
@@ -267,14 +295,14 @@ class RNASeqCoordinator(luigi.Task):
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
-            print("%(donor_uuid)s %(center_name)s %(project)s" % hit["_source"])
+            print("\n\n\n%(donor_uuid)s %(center_name)s %(project)s" % hit["_source"])
+            print("Got %d specimens:" % len(hit["_source"]["specimen"]))
             for specimen in hit["_source"]["specimen"]:
-                print("Got %d specimens:" % len(hit["_source"]["specimen"]))
-                for sample in specimen["samples"]:
-                    print("Got %d samples:" % len(specimen["samples"]))
-                    for analysis in sample["analysis"]:
-                        print("Got %d analysis:" % len(sample["analysis"]))
- 
+               print("Got %d samples:" % len(specimen["samples"]))
+               for sample in specimen["samples"]:
+                   print("Got %d analysis:" % len(sample["analysis"]))
+                   for analysis in sample["analysis"]:
+
 #                        print "MAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rnaseq_variants"])+" "+str(hit["_source"]["flags"]["tumor_rnaseq_variants"])+" "+specimen["submitter_specimen_type"]
 #                        print "regular expression match:"+str(re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))
 
@@ -292,7 +320,10 @@ class RNASeqCoordinator(luigi.Task):
                             parent_uuids = {}
                             for file in analysis["workflow_outputs"]:
 #                                print "file type:"+file["file_type"]
-                                if (file["file_type"] == "fastq" or file["file_type"] == "fastq.gz" or file["file_type"] == "fastq.tar"):
+                                if (file["file_type"] == "fastq" or
+                                    file["file_type"] == "fastq.gz" or
+                                    file["file_type"] == "fastq.tar" or                     
+                                    file["file_type"] == "tar"):
                                     # this will need to be an array
                                     print "adding %s to files list" % file["file_path"]
                                     files.append(file["file_path"])
@@ -301,21 +332,24 @@ class RNASeqCoordinator(luigi.Task):
                                     parent_uuids[sample["sample_uuid"]] = True
 #                            print "will run report for %s" % files
 #                            print "total of %d files in this job" % len(files)
-                            print "total of %d jobs; max jobs allowed is %d" % (len(listOfJobs), int(self.max_jobs))
                             if len(listOfJobs) < int(self.max_jobs) and len(files) > 0:
-#                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
-                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir, new_uuid=str(uuid4())))
+                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
+                            print "total of %d jobs; max jobs allowed is %d" % (len(listOfJobs), int(self.max_jobs))
         # these jobs are yielded to
+        print "\n\n** COORDINATOR REQUIRES DONE!!! **"
         return listOfJobs
 
     def run(self):
-        # now make a final report
+        print "\n\n\n\n** COORDINATOR RUN **"
+         # now make a final report
         f = self.output().open('w')
         # TODO: could print report on what was successful and what failed?  Also, provide enough details like donor ID etc
         print >>f, "batch is complete"
         f.close()
+        print "\n\n\n\n** COORDINATOR RUN DONE **"
 
     def output(self):
+        print "\n\n\n\n** COORDINATOR OUTPUT **"
         # the final report
         ts = time.time()
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
