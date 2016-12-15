@@ -21,11 +21,11 @@ import ssl
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
 
 class ConsonanceTask(luigi.Task):
-    redwood_host = luigi.Parameter("storage2.ucsc-cgl.org")
+    redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.0")
     target_tool = luigi.Parameter(default="quay.io/briandoconnor/rnaseq-cgl-pipeline:2.0.10-3")
-    target_tool_url = luigi.Parameter(default="https://quay.io/repository/briandoconnor/rnaseq-cgl-pipeline")
+    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/briandoconnor/rnaseq-cgl-pipeline")
     workflow_type = luigi.Parameter(default="rna_seq_quantification")
     image_descriptor = luigi.Parameter("must be defined")
  
@@ -290,7 +290,7 @@ class RNASeqCoordinator(luigi.Task):
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
-    redwood_host = luigi.Parameter(default='storage2.ucsc-cgl.org')
+    redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined") 
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
     tmp_dir = luigi.Parameter(default='/datastore')
@@ -341,11 +341,14 @@ class RNASeqCoordinator(luigi.Task):
 
                         print "\n\n\nMAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rnaseq_variants"])+" "+str(hit["_source"]["flags"]["tumor_rnaseq_variants"])+" "+specimen["submitter_specimen_type"]
                         print "regular expression match:"+str(re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))
+ 
+#                        if analysis["analysis_type"] == "rna_seq_quantification":
 
-#                        if analysis["analysis_type"] == "sequence_upload":
-                        if analysis["analysis_type"] == "sequence_upload" and \
-                                   (re.match("^Normal - ", specimen["submitter_specimen_type"]) or \
-                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"])):
+                        if analysis["analysis_type"] == "sequence_upload":
+#
+#                        if analysis["analysis_type"] == "sequence_upload" and \
+#                                   (re.match("^Normal - ", specimen["submitter_specimen_type"]) or \
+#                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"])):
  
  
 #                        if analysis["analysis_type"] == "sequence_upload" and  ((hit["_source"]["flags"]["normal_rnaseq_variants"] == False and \
@@ -362,12 +365,12 @@ class RNASeqCoordinator(luigi.Task):
                                 print "file type:"+file["file_type"]
                                 print "file name:"+file["file_path"]
                                 if (
-                                    os.path.basename(file["file_path"]) == "small_NA12878-NGv3-LAB1360-A.tar"):
+#                                    os.path.basename(file["file_path"]) == "small_NA12878-NGv3-LAB1360-A.tar"):
 ##                                    file["file_type"] == "fastq" or
 ##                                    file["file_type"] == "fastq.gz" or
                                     
-#                                    file["file_type"] == "fastq.tar" or                     
-#                                    file["file_type"] == "tar"):
+                                    file["file_type"] == "fastq.tar" or                     
+                                    file["file_type"] == "tar"):
                                     # this will need to be an array
                                     print "adding %s of file type %s to files list" % (file["file_path"], file["file_type"])
                                     files.append(file["file_path"])
