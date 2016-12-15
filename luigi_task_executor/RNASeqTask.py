@@ -10,6 +10,7 @@ from urllib import urlopen
 import uuid
 from uuid import uuid4
 from uuid import uuid5
+import os
 
 from elasticsearch import Elasticsearch
 
@@ -23,26 +24,27 @@ class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.0")
-    target_tool = luigi.Parameter(default="quay.io/briandoconnor/rnaseq-cgl-pipeline:2.0.10")
-    target_tool_url = luigi.Parameter(default="https://quay.io/repository/briandoconnor/rnaseq-cgl-pipeline")
-    workflow_type = luigi.Parameter(default="RNA-Seq")
-
+    target_tool = luigi.Parameter(default="quay.io/briandoconnor/rnaseq-cgl-pipeline:2.0.10-3")
+    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/briandoconnor/rnaseq-cgl-pipeline")
+    workflow_type = luigi.Parameter(default="rna_seq_quantification")
+    image_descriptor = luigi.Parameter("must be defined")
+ 
     filenames = luigi.ListParameter(default=["must input sample files"])
-    starfilename = luigi.Parameter(default="./starIndex_hg38_no_alt.tar.gz")
-    rsemfilename = luigi.Parameter(default="./rsem_ref_hg38_no_alt.tar.gz")
-    kallistofilename = luigi.Parameter(default="./kallisto_hg38.idx")
+    starfilename = luigi.Parameter(default="https://s3.amazonaws.com/oconnor-test-bucket/sample-data/starIndex_hg38_no_alt.tar.gz")
+    rsemfilename = luigi.Parameter(default="https://s3.amazonaws.com/oconnor-test-bucket/sample-data/rsem_ref_hg38_no_alt.tar.gz")
+    kallistofilename = luigi.Parameter(default="https://s3.amazonaws.com/oconnor-test-bucket/sample-data/kallisto_hg38.idx")
 
     disable_cutadapt = luigi.Parameter(default="false")
-    save_bam = luigi.Parameter(default="true")
-    save_wiggle = luigi.Parameter(default="true")
+    save_bam = luigi.Parameter(default="false")
+    save_wiggle = luigi.Parameter(default="false")
     no_clean = luigi.Parameter(default="true")
-    resume = luigi.Parameter(default="false")
-    cores = luigi.Parameter(default="16")
+    resume = luigi.Parameter(default="")
+    cores = luigi.Parameter(default=16)
 
     file_uuids = luigi.ListParameter(default=["uuid"])
     bundle_uuids = luigi.ListParameter(default=["bundle_uuid"])
     parent_uuids = luigi.ListParameter(default=["parent_uuid"])
-    tmp_dir = luigi.Parameter(default='/tmp')
+    tmp_dir = luigi.Parameter(default='/datastore')
 
     def run(self):
         print "** EXECUTING IN CONSONANCE **"
@@ -125,6 +127,14 @@ class ConsonanceTask(luigi.Task):
 ''' % self.disable_cutadapt
 
         json_str += '''
+"resume": "%s",
+''' % self.resume
+
+        json_str += '''
+"cores": %d,
+''' % self.cores
+
+        json_str += '''
 "output_files" : [
         '''
         i = 0
@@ -132,7 +142,7 @@ class ConsonanceTask(luigi.Task):
             json_str += '''
     {
       "class": "File",
-      "path": "./tmp/%s"
+      "path": "/tmp/%s"
     }
             ''' % (self.filenames[i])
             if i < len(self.filenames) - 1:
@@ -140,6 +150,7 @@ class ConsonanceTask(luigi.Task):
             i += 1
         json_str += '''
   ]'''
+
 
         # if the user wants to save the wiggle output file
         if self.save_wiggle == 'true':
@@ -150,11 +161,11 @@ class ConsonanceTask(luigi.Task):
             i = 0
             while i<len(self.filenames):
                 # append file information
-                new_filename = self.filenames[i].replace('.tar', '.wiggle.bg')
+                new_filename = self.filenames[i].split('/')[-1].split('.')[0] + '.wiggle.bg'
                 json_str += '''
     {
       "class": "File",
-      "path": "./tmp/%s"
+      "path": "/tmp/%s"
     }
                 ''' % (new_filename)
                 if i < len(self.filenames) - 1:
@@ -173,11 +184,11 @@ class ConsonanceTask(luigi.Task):
             i = 0
             while i<len(self.filenames):
                 # append file information
-                new_filename = self.filenames[i].replace('.tar', '.bam')
+                new_filename = self.filenames[i].split('/')[-1].split('.')[0] + '.bam'
                 json_str += '''
     {
       "class": "File",
-      "path": "./tmp/%s"
+      "path": "/tmp/%s"
     }
                 ''' % (new_filename)
                 if i < len(self.filenames) - 1:
@@ -195,6 +206,9 @@ class ConsonanceTask(luigi.Task):
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print "** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **"
         # create a json for dockstoreRunningDockstoreTool, embed the RNA-Seq JSON as a param
+# below used to be a list of parent UUIDs; which is correct????
+#            "parent_uuids": "[%s]",
+ 
         p = self.save_json().open('w')
         print >>p, '''{
             "json_encoded": "%s",
@@ -202,17 +216,38 @@ class ConsonanceTask(luigi.Task):
             "dockstore_url": "%s",
             "redwood_token": "%s",
             "redwood_host": "%s",
-            "parent_uuids": "[%s]",
-            "workflow_type": "%s"
-        }''' % (base64_json_str, self.target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)), self.workflow_type )
+            "parent_uuids": "%s",
+            "workflow_type": "%s",
+            "tmpdir": "%s",
+            "vm_instance_type": "c4.8xlarge",
+            "vm_region": "us-west-2",
+            "vm_location": "aws",
+            "vm_instance_cores": 16,
+            "vm_instance_mem_gb": 64,
+            "output_metadata_json": "/tmp/final_metadata.json"
+        }''' % (base64_json_str, self.target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)), self.workflow_type, self.tmp_dir )
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
-        print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor " + p.path
-#        print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor sample_configs.json"
+
+        cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", p.path]
+        #print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor " + p.path
+        print "executing:"+ ' '.join(cmd)
+
         # loop to check the consonance status until finished or failed
         print "** WAITING FOR CONSONANCE **"
-        print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
+        #print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
+                
+        try:
+            result = subprocess.call(cmd)
+        except Exception as e:
+            print "Error in Consonance call!!!:" + e.message
+
+        if result == 0:
+            print "Consonance job return success code!"
+        else:
+            print "ERROR: Consonance job failed!!!"
+         
 #        result = subprocess.call(cmd, shell=True)
 #        if result == 0:
 #            cmd = "rm -rf "+self.data_dir+"/"+self.bundle_uuid+"/bamstats_report.zip "+self.data_dir+"/"+self.bundle_uuid+"/datastore/"
@@ -237,7 +272,7 @@ class ConsonanceTask(luigi.Task):
         #TODO??? should this be based on all the inputs
         #including the path to star, kallisto, rsem and
         #save BAM, etc.???
-        task_uuid = uuid5(uuid.NAMESPACE_DNS, ''.join(map("'{0}'".format, self.filenames)) + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)) + self.workflow_type)
+        task_uuid = uuid5(uuid.NAMESPACE_DNS, ''.join(map("'{0}'".format, self.filenames)) + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)) + self.workflow_type + self.save_bam + self.save_wiggle + self.disable_cutadapt)
 #        print("task uuid:%s",str(task_uuid))
         return task_uuid
 
@@ -256,9 +291,10 @@ class RNASeqCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
+    image_descriptor = luigi.Parameter("must be defined") 
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
-    tmp_dir = luigi.Parameter(default='/tmp')
-    data_dir = luigi.Parameter(default='/tmp/data_dir')
+    tmp_dir = luigi.Parameter(default='/datastore')
+#    data_dir = luigi.Parameter(default='/tmp/data_dir')
     max_jobs = luigi.Parameter(default='1')
     bundle_uuid_filename_to_file_uuid = {}
 
@@ -303,15 +339,22 @@ class RNASeqCoordinator(luigi.Task):
                    print("Got %d analysis:" % len(sample["analysis"]))
                    for analysis in sample["analysis"]:
 
-#                        print "MAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rnaseq_variants"])+" "+str(hit["_source"]["flags"]["tumor_rnaseq_variants"])+" "+specimen["submitter_specimen_type"]
-#                        print "regular expression match:"+str(re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))
+                        print "\n\n\nMAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rnaseq_variants"])+" "+str(hit["_source"]["flags"]["tumor_rnaseq_variants"])+" "+specimen["submitter_specimen_type"]
+                        print "regular expression match:"+str(re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))
+ 
+#                        if analysis["analysis_type"] == "rna_seq_quantification":
 
-
-                        if analysis["analysis_type"] == "sequence_upload" and \
-                              ((hit["_source"]["flags"]["normal_rnaseq_variants"] == False and \
-                                   re.match("^Normal - ", specimen["submitter_specimen_type"])) or \
-                               (hit["_source"]["flags"]["tumor_rnaseq_variants"] == False and \
-                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))):
+                        if analysis["analysis_type"] == "sequence_upload":
+#
+#                        if analysis["analysis_type"] == "sequence_upload" and \
+#                                   (re.match("^Normal - ", specimen["submitter_specimen_type"]) or \
+#                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"])):
+ 
+ 
+#                        if analysis["analysis_type"] == "sequence_upload" and  ((hit["_source"]["flags"]["normal_rnaseq_variants"] == False and \
+#                                   re.match("^Normal - ", specimen["submitter_specimen_type"])) or \
+#                               (hit["_source"]["flags"]["tumor_rnaseq_variants"] == False and \
+#                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line - derived from tumour", specimen["submitter_specimen_type"]))):
                             #print analysis
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rnaseq_variants"])+" "+specimen["submitter_specimen_type"]
                             files = []
@@ -319,13 +362,17 @@ class RNASeqCoordinator(luigi.Task):
                             bundle_uuids = []
                             parent_uuids = {}
                             for file in analysis["workflow_outputs"]:
-#                                print "file type:"+file["file_type"]
-                                if (file["file_type"] == "fastq" or
-                                    file["file_type"] == "fastq.gz" or
+                                print "file type:"+file["file_type"]
+                                print "file name:"+file["file_path"]
+                                if (
+#                                    os.path.basename(file["file_path"]) == "small_NA12878-NGv3-LAB1360-A.tar"):
+##                                    file["file_type"] == "fastq" or
+##                                    file["file_type"] == "fastq.gz" or
+                                    
                                     file["file_type"] == "fastq.tar" or                     
                                     file["file_type"] == "tar"):
                                     # this will need to be an array
-                                    print "adding %s to files list" % file["file_path"]
+                                    print "adding %s of file type %s to files list" % (file["file_path"], file["file_type"])
                                     files.append(file["file_path"])
                                     file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                     bundle_uuids.append(analysis["bundle_uuid"])
@@ -333,7 +380,7 @@ class RNASeqCoordinator(luigi.Task):
 #                            print "will run report for %s" % files
 #                            print "total of %d files in this job" % len(files)
                             if len(listOfJobs) < int(self.max_jobs) and len(files) > 0:
-                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
+                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, image_descriptor=self.image_descriptor, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
                             print "total of %d jobs; max jobs allowed is %d" % (len(listOfJobs), int(self.max_jobs))
         # these jobs are yielded to
         print "\n\n** COORDINATOR REQUIRES DONE!!! **"
