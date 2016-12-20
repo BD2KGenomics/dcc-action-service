@@ -142,7 +142,7 @@ class ConsonanceTask(luigi.Task):
             json_str += '''
     {
       "class": "File",
-      "path": "/tmp/%s"
+      "path": "/tmp/%s.gz"
     }
             ''' % (self.filenames[i])
             if i < len(self.filenames) - 1:
