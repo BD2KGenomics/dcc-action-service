@@ -13,16 +13,20 @@ from elasticsearch import Elasticsearch
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
 
 class ConsonanceTask(luigi.Task):
-    redwood_host = luigi.Parameter("storage2.ucsc-cgl.org")
+    redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
-    target_tool = luigi.Parameter(default="quay.io/wshands/fastqc:latest")
-    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/wshands/fastqc")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.6")
+    target_tool = luigi.Parameter(default="quay.io/briandoconnor/fastqc:0.11.5")
+    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/briandoconnor/fastqc")
     workflow_type = luigi.Parameter(default="sequence_upload_qc_report")
     filenames = luigi.ListParameter(default=["filename"])
     file_uuids = luigi.ListParameter(default=["uuid"])
     bundle_uuids = luigi.ListParameter(default=["bundle_uuid"])
     parent_uuids = luigi.ListParameter(default=["parent_uuid"])
+    # tar_files
+    tar_filenames = luigi.ListParameter(default=["filename"])
+    tar_file_uuids = luigi.ListParameter(default=["uuid"])
+    tar_bundle_uuids = luigi.ListParameter(default=["bundle_uuid"])
     tmp_dir = luigi.Parameter(default='/tmp')
     new_uuid = str(uuid4())
 
@@ -41,7 +45,7 @@ class ConsonanceTask(luigi.Task):
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
         # TODO: this is tied to the requirements of the tool being targeted
         json_str = '''{
-"fastq_file": [
+"fastq_files": [
         '''
         i = 0
         while i<len(self.filenames):
@@ -56,38 +60,26 @@ class ConsonanceTask(luigi.Task):
                 json_str += ","
             i += 1
         json_str += '''],
-"report_files" : [
+"tar_files": [
         '''
         i = 0
-        while i<len(self.filenames):
+        while i<len(self.tar_filenames):
             # append file information
-            new_filename = self.filenames[i].replace('.fastq.gz', '.html')
             json_str += '''
 {
     "class": "File",
-    "path": "./tmp/%s"
+    "path": "redwood://%s/%s/%s/%s"
 }
-            ''' % (new_filename)
-            if i < len(self.filenames) - 1:
+            ''' % (self.redwood_host, self.tar_bundle_uuids[i], self.tar_file_uuids[i], self.tar_filenames[i])
+            if i < len(self.tar_filenames) - 1:
                 json_str += ","
             i += 1
         json_str += '''],
-"zipped_files" : [
-        '''
-        i = 0
-        while i<len(self.filenames):
-            # append file information
-            new_filename = self.filenames[i].replace('.fastq.gz', '.zip')
-            json_str += '''
-{
+"zipped_file" :
+  {
     "class": "File",
-    "path": "./tmp/%s"
-}
-            ''' % (new_filename)
-            if i < len(self.filenames) - 1:
-                json_str += ","
-            i += 1
-        json_str += ''']
+    "path": "./tmp/fastqc_reports.tar.gz"
+  }
 }
         '''
         print "THE JSON: "+json_str
@@ -109,19 +101,6 @@ class ConsonanceTask(luigi.Task):
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
         print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor sample_configs.json"
-        # loop to check the consonance status until finished or failed
-        print "** WAITING FOR CONSONANCE **"
-        print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
-#        result = subprocess.call(cmd, shell=True)
-#        if result == 0:
-#            cmd = "rm -rf "+self.data_dir+"/"+self.bundle_uuid+"/bamstats_report.zip "+self.data_dir+"/"+self.bundle_uuid+"/datastore/"
-#            print "CLEANUP CMD: "+cmd
-#            result = subprocess.call(cmd, shell=True)
-#            if result == 0:
-#                print "CLEANUP SUCCESSFUL"
-#            f = self.output().open('w')
-#            print >>f, "uploaded"
-#            f.close()
 
     def output(self):
         return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/finished.json' % (self.tmp_dir, self.new_uuid))
@@ -132,8 +111,8 @@ class SequenceQCCoordinator(luigi.Task):
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
-    redwood_host = luigi.Parameter(default='storage2.ucsc-cgl.org')
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.0")
+    redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.6")
     tmp_dir = luigi.Parameter(default='/tmp')
     data_dir = luigi.Parameter(default='/tmp/data_dir')
     max_jobs = luigi.Parameter(default='1')
@@ -143,12 +122,16 @@ class SequenceQCCoordinator(luigi.Task):
         print "** COORDINATOR **"
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
         print str("https://"+self.redwood_host+":8444/entities?page=0")
-        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0")).read()
+        #hack to get around none self signed certificates
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0"), context=ctx).read()
         metadata_struct = json.loads(json_str)
         print "** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"])
         for i in range(0, metadata_struct["totalPages"]):
             print "** CURRENT METADATA TOTAL PAGES: "+str(i)
-            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i))).read()
+            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i)), context=ctx).read()
             metadata_struct = json.loads(json_str)
             for file_hash in metadata_struct["content"]:
                 self.bundle_uuid_filename_to_file_uuid[file_hash["gnosId"]+"_"+file_hash["fileName"]] = file_hash["id"]
@@ -167,14 +150,16 @@ class SequenceQCCoordinator(luigi.Task):
             for specimen in hit["_source"]["specimen"]:
                 for sample in specimen["samples"]:
                     for analysis in sample["analysis"]:
-                        #print "MAYBE HIT??? "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
                         if analysis["analysis_type"] == "sequence_upload" and ((hit["_source"]["flags"]["normal_sequence_qc_report"] == False and re.match("^Normal - ", specimen["submitter_specimen_type"])) or (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour -", specimen["submitter_specimen_type"]))):
-                            #print analysis
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
                             files = []
+                            tar_files = []
                             file_uuids = []
+                            tar_file_uuids = []
                             bundle_uuids = []
+                            tar_bundle_uuids = []
                             parent_uuids = {}
+                            tar_parent_uuids = {}
                             for file in analysis["workflow_outputs"]:
                                 if (file["file_type"] == "fastq" or file["file_type"] == "fastq.gz"):
                                     # this will need to be an array
@@ -182,9 +167,14 @@ class SequenceQCCoordinator(luigi.Task):
                                     file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                     bundle_uuids.append(analysis["bundle_uuid"])
                                     parent_uuids[sample["sample_uuid"]] = True
+                                elif (file["file_type"] == "fastq.tar"):
+                                    tar_files.append(file["file_path"])
+                                    tar_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
+                                    tar_bundle_uuids.append(analysis["bundle_uuid"])
+                                    parent_uuids[sample["sample_uuid"]] = True
                             print "  + will run report for %s" % files
                             if len(listOfJobs) < int(self.max_jobs):
-                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir))
+                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tar_filenames= tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, tmp_dir=self.tmp_dir))
         # these jobs are yielded to
         return listOfJobs
 
