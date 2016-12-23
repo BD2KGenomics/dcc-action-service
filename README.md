@@ -65,7 +65,7 @@ git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask Alignme
 
 # now test sequence QC runner (can use --local-scheduler for local schedule)
 cd luigi_task_executor
-rm -rf /tmp/consonance-jobs; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --es-index-host localhost --es-index-port 9200 --redwood-token `cat ../accessToken` --redwood-client-path ../ucsc-storage-client --redwood-host storage2.ucsc-cgl.org --tmp-dir /tmp --data-dir /mnt/SequenceQCTask --max-jobs 1
+rm -rf /tmp/consonance-jobs; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --es-index-host localhost --es-index-port 9200 --redwood-token `cat ../accessToken` --redwood-client-path ../ucsc-storage-client --redwood-host storage.ucsc-cgl.org --tmp-dir /tmp --data-dir /mnt/SequenceQCTask --max-jobs 1
 
 ```
 
