@@ -178,7 +178,7 @@ class SequenceQCCoordinator(luigi.Task):
                                     parent_uuids[sample["sample_uuid"]] = True
                             print "  + will run report for %s" % files
                             if len(listOfJobs) < int(self.max_jobs):
-                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tar_filenames= tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, tmp_dir=self.tmp_dir))
+                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tar_filenames= tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
         # these jobs are yielded to
         return listOfJobs
 
