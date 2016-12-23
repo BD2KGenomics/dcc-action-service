@@ -67,6 +67,8 @@ git hf update; git hf pull; PYTHONPATH='' luigi --module AlignmentQCTask Alignme
 cd luigi_task_executor
 rm -rf /tmp/consonance-jobs; PYTHONPATH='' luigi --module SequenceQCTask SequenceQCCoordinator --es-index-host localhost --es-index-port 9200 --redwood-token `cat ../accessToken` --redwood-client-path ../ucsc-storage-client --redwood-host storage.ucsc-cgl.org --tmp-dir /tmp --data-dir /mnt/SequenceQCTask --max-jobs 1
 
+# local scheduler
+PYTHONPATH='.' luigi --module SequenceQCTask SequenceQCCoordinator --es-index-host 172.31.25.227 --es-index-port 9200 --redwood-token `cat ../accessToken` --redwood-client-path ../ucsc-storage-client --redwood-host storage.ucsc-cgl.org --local-scheduler --tmp-dir /tmp --data-dir /mnt/SequenceQCTask --max-jobs 1 --image-descriptor /home/ubuntu/luigi_consonance_rnaseq_testing/test_here/Dockstore.cwl
 ```
 
 Monitor on the web GUI:
