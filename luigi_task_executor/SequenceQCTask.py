@@ -8,6 +8,8 @@ import base64
 from urllib import urlopen
 from uuid import uuid4
 from elasticsearch import Elasticsearch
+#for hack to get around non self signed certificates
+import ssl
 
 # TODO
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
