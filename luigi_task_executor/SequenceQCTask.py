@@ -103,7 +103,7 @@ class ConsonanceTask(luigi.Task):
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
-        print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor sample_configs.json"
+        print "consonance run  --flavour c4.8xlarge --image-descriptor %s --run-descriptor %s/consonance-jobs/SequenceQCCoordinator/%s/settings.json" % (self.image_descriptor, self.tmp_dir, self.new_uuid)
 
     def output(self):
         return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.new_uuid))
