@@ -110,7 +110,25 @@ class ConsonanceTask(luigi.Task):
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
-        print "consonance run  --flavour c4.8xlarge --image-descriptor %s --run-descriptor %s/consonance-jobs/SequenceQCCoordinator/%s/settings.json" % (self.image_descriptor, self.tmp_dir, self.new_uuid)
+        #print "consonance run  --flavour c4.8xlarge --image-descriptor %s --run-descriptor %s/consonance-jobs/SequenceQCCoordinator/%s/settings.json" % (self.image_descriptor, self.tmp_dir, self.new_uuid)
+
+        cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", p.path]
+        #print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor " + p.path
+        print "executing:"+ ' '.join(cmd)
+
+        # loop to check the consonance status until finished or failed
+        #print "** WAITING FOR CONSONANCE **"
+        #print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
+
+        try:
+            result = subprocess.call(cmd)
+        except Exception as e:
+            print "Error in Consonance call!!!:" + e.message
+
+        if result == 0:
+            print "Consonance job return success code!"
+        else:
+            print "ERROR: Consonance job failed!!!"
 
     def output(self):
         return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.new_uuid))
