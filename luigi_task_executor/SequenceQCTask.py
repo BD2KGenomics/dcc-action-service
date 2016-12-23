@@ -97,9 +97,16 @@ class ConsonanceTask(luigi.Task):
             "dockstore_url": "%s",
             "redwood_token": "%s",
             "redwood_host": "%s",
-            "parent_uuids": "[%s]",
-            "workflow_type": "%s"
-        }''' % (base64_json_str, self.target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, ','.join(map("'{0}'".format, self.parent_uuids)), self.workflow_type )
+            "parent_uuids": "%s",
+            "workflow_type": "%s",
+            "tmpdir": "/datastore",
+            "vm_instance_type": "c4.8xlarge",
+            "vm_region": "us-west-2",
+            "vm_location": "aws",
+            "vm_instance_cores": 36,
+            "vm_instance_mem_gb": 60,
+            "output_metadata_json": "/tmp/final_metadata.json"
+        }''' % (base64_json_str, self.target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, ','.join(map("{0}".format, self.parent_uuids)), self.workflow_type)
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
