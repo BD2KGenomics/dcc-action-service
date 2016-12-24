@@ -13,6 +13,8 @@ import ssl
 
 # TODO
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
+# * the UUID needs to be made for each submission, and this UUID needs to be stable so if I re-run this decider it will create the same path
+# * I think some of the upload types are not matching the code below (maybe tar file and not fastq.tar?) Or the flags are not working as expected.  And therefore missing some samples.
 
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
@@ -201,7 +203,7 @@ class SequenceQCCoordinator(luigi.Task):
                                     tar_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                     tar_bundle_uuids.append(analysis["bundle_uuid"])
                                     parent_uuids[sample["sample_uuid"]] = True
-                            print "  + will run report for %s" % files
+                            print "  + will run report for %s files and %s tar files" % (files, tar_files)
                             if len(listOfJobs) < int(self.max_jobs):
                                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tar_filenames= tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
         # these jobs are yielded to
