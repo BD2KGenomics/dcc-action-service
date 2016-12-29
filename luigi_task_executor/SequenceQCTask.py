@@ -6,7 +6,9 @@ import datetime
 import subprocess
 import base64
 from urllib import urlopen
+import uuid
 from uuid import uuid4
+from uuid import uuid5
 from elasticsearch import Elasticsearch
 #for hack to get around non self signed certificates
 import ssl
@@ -38,7 +40,7 @@ class ConsonanceTask(luigi.Task):
         print "** EXECUTING IN CONSONANCE **"
         print "** MAKE TEMP DIR **"
         # create a unique temp dir
-        cmd = '''mkdir -p %s/consonance-jobs/SequenceQCCoordinator/%s/''' % (self.tmp_dir, self.get_task_uuid)
+        cmd = '''mkdir -p %s/consonance-jobs/SequenceQCCoordinator/%s/''' % (self.tmp_dir, self.get_task_uuid())
         print cmd
         result = subprocess.call(cmd, shell=True)
         if result != 0:
@@ -114,11 +116,6 @@ class ConsonanceTask(luigi.Task):
         cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", p.path]
         #print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor " + p.path
         print "executing:"+ ' '.join(cmd)
-
-        # loop to check the consonance status until finished or failed
-        #print "** WAITING FOR CONSONANCE **"
-        #print "consonance status --job_uuid e2ad3160-74e2-4b04-984f-90aaac010db6"
-
         try:
             result = subprocess.call(cmd)
         except Exception as e:
@@ -130,7 +127,7 @@ class ConsonanceTask(luigi.Task):
             print "ERROR: Consonance job failed!!!"
 
     def output(self):
-        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.get_task_uuid))
+        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.get_task_uuid()))
 
     def get_task_uuid(self):
         #get a unique id for this task based on the some inputs
