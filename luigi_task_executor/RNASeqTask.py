@@ -325,13 +325,14 @@ class RNASeqCoordinator(luigi.Task):
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
+        # res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_quantification" : "false"}},{"term" : {"flags.tumor_rna_seq_quantification" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
         res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_quantification" : "false"}},{"term" : {"flags.tumor_rna_seq_quantification" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         listOfJobs = []
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
-            print("\n\n\n%(donor_uuid)s %(center_name)s %(project)s" % hit["_source"])
+            print("\n\n\n%(donor_uuid)s %(submitter_donor_id)s %(center_name)s %(project)s" % hit["_source"])
             print("Got %d specimens:" % len(hit["_source"]["specimen"]))
             for specimen in hit["_source"]["specimen"]:
                print("Got %d samples:" % len(specimen["samples"]))
@@ -341,12 +342,14 @@ class RNASeqCoordinator(luigi.Task):
                         if analysis["analysis_type"] == "sequence_upload" and \
                               ((hit["_source"]["flags"]["normal_rna_seq_quantification"] == False and \
                                    re.match("^Normal - ", specimen["submitter_specimen_type"]) and \
-                                   re.match("^RNA-Seq$", specimen["submitter_experimental_design"])) or \
+                                   re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_quantification"]) or \
                                (hit["_source"]["flags"]["tumor_rna_seq_quantification"] == False and \
-                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - ", specimen["submitter_specimen_type"]) and \
-                                   re.match("^RNA-Seq$", specimen["submitter_experimental_design"]))):
+                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Xenograft - |^Cell line - ", specimen["submitter_specimen_type"]) and \
+                                   re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_quantification"])):
                             #print analysis
-                            print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_rna_seq_quantification"])+" "+specimen["submitter_specimen_type"]
+                            print "HIT!!!! "+analysis["analysis_type"]+" "+specimen["submitter_specimen_type"]+" "+specimen["submitter_experimental_design"]+" "+str(hit["_source"]["submitter_donor_id"])+" "+str(sample["submitter_sample_id"])+" "+str(hit["_source"]["flags"]["normal_rna_seq_quantification"])+" "+specimen["submitter_specimen_type"]
                             files = []
                             file_uuids = []
                             bundle_uuids = []
