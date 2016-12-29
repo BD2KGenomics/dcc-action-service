@@ -33,13 +33,12 @@ class ConsonanceTask(luigi.Task):
     tar_file_uuids = luigi.ListParameter(default=["uuid"])
     tar_bundle_uuids = luigi.ListParameter(default=["bundle_uuid"])
     tmp_dir = luigi.Parameter(default='/tmp')
-    new_uuid = str(uuid4())
 
     def run(self):
         print "** EXECUTING IN CONSONANCE **"
         print "** MAKE TEMP DIR **"
         # create a unique temp dir
-        cmd = '''mkdir -p %s/consonance-jobs/SequenceQCCoordinator/%s/''' % (self.tmp_dir, self.new_uuid)
+        cmd = '''mkdir -p %s/consonance-jobs/SequenceQCCoordinator/%s/''' % (self.tmp_dir, self.get_task_uuid)
         print cmd
         result = subprocess.call(cmd, shell=True)
         if result != 0:
@@ -112,8 +111,6 @@ class ConsonanceTask(luigi.Task):
         p.close()
         # execute consonance run, parse the job UUID
         print "** SUBMITTING TO CONSONANCE **"
-        #print "consonance run  --flavour c4.8xlarge --image-descriptor %s --run-descriptor %s/consonance-jobs/SequenceQCCoordinator/%s/settings.json" % (self.image_descriptor, self.tmp_dir, self.new_uuid)
-
         cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", p.path]
         #print "consonance run  --flavour m1.xlarge --image-descriptor Dockstore.cwl --run-descriptor " + p.path
         print "executing:"+ ' '.join(cmd)
@@ -133,7 +130,18 @@ class ConsonanceTask(luigi.Task):
             print "ERROR: Consonance job failed!!!"
 
     def output(self):
-        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.new_uuid))
+        return luigi.LocalTarget('%s/consonance-jobs/SequenceQCCoordinator/%s/settings.json' % (self.tmp_dir, self.get_task_uuid))
+
+    def get_task_uuid(self):
+        #get a unique id for this task based on the some inputs
+        #this id will not change if the inputs are the same
+        #This helps make the task idempotent; it that it
+        #always has the same task id for the same inputs
+        #TODO??? should this be based on all the inputs
+        #including the path to star, kallisto, rsem and
+        #save BAM, etc.???
+        task_uuid = uuid5(uuid.NAMESPACE_DNS, ''.join(map("'{0}'".format, self.filenames)) + ''.join(map("'{0}'".format, self.tar_filenames)) + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)))
+        return task_uuid
 
 class SequenceQCCoordinator(luigi.Task):
 
