@@ -177,11 +177,18 @@ class SequenceQCCoordinator(luigi.Task):
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
-            print("%(donor_uuid)s %(center_name)s %(project)s" % hit["_source"])
+            print("\n\n\n%(donor_uuid)s %(submitter_donor_id)s %(center_name)s %(project)s" % hit["_source"])
             for specimen in hit["_source"]["specimen"]:
                 for sample in specimen["samples"]:
                     for analysis in sample["analysis"]:
-                        if analysis["analysis_type"] == "sequence_upload" and ((hit["_source"]["flags"]["normal_sequence_qc_report"] == False and re.match("^Normal - ", specimen["submitter_specimen_type"])) or (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour -", specimen["submitter_specimen_type"]))):
+                        #if analysis["analysis_type"] == "sequence_upload" and ((hit["_source"]["flags"]["normal_sequence_qc_report"] == False and re.match("^Normal - ", specimen["submitter_specimen_type"])) or (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour -", specimen["submitter_specimen_type"]))):
+                        if analysis["analysis_type"] == "sequence_upload" and \
+                              ((hit["_source"]["flags"]["normal_sequence_qc_report"] == False and \
+                                   re.match("^Normal - ", specimen["submitter_specimen_type"]) and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_sequence_qc_report"]) or \
+                               (hit["_source"]["flags"]["tumor_sequence_qc_report"] == False and \
+                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Xenograft - |^Cell line - ", specimen["submitter_specimen_type"]) and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_sequence_qc_report"])):
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_sequence_qc_report"])+" "+specimen["submitter_specimen_type"]
                             files = []
                             tar_files = []
