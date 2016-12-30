@@ -21,7 +21,7 @@ import ssl
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/briandoconnor/dockstore-tool-running-dockstore-tool:1.0.6")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.7")
     target_tool = luigi.Parameter(default="quay.io/briandoconnor/fastqc:0.11.5")
     target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/briandoconnor/fastqc")
     workflow_type = luigi.Parameter(default="sequence_upload_qc_report")

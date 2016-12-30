@@ -85,15 +85,15 @@ class ConsonanceTask(luigi.Task):
         print "** SUBMITTING TO CONSONANCE **"
         cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", p.path]
         print "executing:"+ ' '.join(cmd)
-        try:
-            result = subprocess.call(cmd)
-        except Exception as e:
-            print "Error in Consonance call!!!:" + e.message
-
-        if result == 0:
-            print "Consonance job return success code!"
-        else:
-            print "ERROR: Consonance job failed!!!"
+#        try:
+#            result = subprocess.call(cmd)
+#        except Exception as e:
+#            print "Error in Consonance call!!!:" + e.message
+#
+#        if result == 0:
+#            print "Consonance job return success code!"
+#        else:
+#            print "ERROR: Consonance job failed!!!"
 
     def output(self):
         return luigi.LocalTarget('%s/consonance-jobs/AlignmentQCCoordinator/%s/settings.json' % (self.tmp_dir, self.get_task_uuid()))
@@ -162,29 +162,14 @@ class AlignmentQCCoordinator(luigi.Task):
                                    sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_alignment_qc_report"])):
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_alignment_qc_report"])+" "+specimen["submitter_specimen_type"]
                             files = []
-                            tar_files = []
                             file_uuids = []
-                            tar_file_uuids = []
                             bundle_uuids = []
-                            tar_bundle_uuids = []
                             parent_uuids = {}
-                            tar_parent_uuids = {}
                             for file in analysis["workflow_outputs"]:
                                 if file["file_type"] == "bam":
-                                    # this will need to be an array
-                                    # LEFT OFF HERE: either this should be a single file or an array... decide
-                                    files.append(file["file_path"])
-                                    file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
-                                    bundle_uuids.append(analysis["bundle_uuid"])
-                                    parent_uuids[sample["sample_uuid"]] = True
-                                elif (file["file_type"] == "fastq.tar"):
-                                    tar_files.append(file["file_path"])
-                                    tar_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
-                                    tar_bundle_uuids.append(analysis["bundle_uuid"])
-                                    parent_uuids[sample["sample_uuid"]] = True
-                            print "  + will run report for %s files and %s tar files" % (files, tar_files)
-                            if len(listOfJobs) < int(self.max_jobs):
-                                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filenames=files, file_uuids = file_uuids, bundle_uuids = bundle_uuids, parent_uuids = parent_uuids.keys(), tar_filenames= tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
+                                    print "  + will run report for %s file" % (file["file_path"])
+                                    if len(listOfJobs) < int(self.max_jobs):
+                                        listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filename=file["file_path"], file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"]), bundle_uuid = analysis["bundle_uuid"], parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
         # these jobs are yielded to
         return listOfJobs
 
@@ -203,7 +188,6 @@ class AlignmentQCCoordinator(luigi.Task):
 
     def fileToUUID(self, input, bundle_uuid):
         return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]
-        #"afb54dff-41ad-50e5-9c66-8671c53a278b"
 
 if __name__ == '__main__':
     luigi.run()
