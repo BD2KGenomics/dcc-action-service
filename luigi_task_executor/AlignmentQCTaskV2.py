@@ -106,7 +106,7 @@ class ConsonanceTaskV2(luigi.Task):
         reload(sys)
         sys.setdefaultencoding('utf8')
         print "FILENAME: "+self.filename+" FILE UUID: "+ self.file_uuid +" TARGET TOOL: "+ self.target_tool +" Target TOOL URL "+ self.target_tool_url +" REDWOOD TOKEN: "+ self.redwood_token +" REDWOOD HOST "+ self.redwood_host
-        task_uuid = uuid5(uuid.NAMESPACE_DNS, self.filename + self.file_uuid + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host)
+        task_uuid = uuid5(uuid.NAMESPACE_DNS, (self.filename + self.file_uuid + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host).encode('utf-8'))
         return task_uuid
 
 class AlignmentQCCoordinatorV2(luigi.Task):
