@@ -12,6 +12,7 @@ from uuid import uuid5
 from elasticsearch import Elasticsearch
 #for hack to get around non self signed certificates
 import ssl
+import sys
 
 # TODO
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
