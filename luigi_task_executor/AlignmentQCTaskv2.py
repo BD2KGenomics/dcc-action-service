@@ -16,7 +16,7 @@ import ssl
 # TODO
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
 
-class ConsonanceTask(luigi.Task):
+class ConsonanceTaskV2(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.7")
@@ -107,7 +107,7 @@ class ConsonanceTask(luigi.Task):
         self.file_uuid + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)))
         return task_uuid
 
-class AlignmentQCCoordinator(luigi.Task):
+class AlignmentQCCoordinatorV2(luigi.Task):
 
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
