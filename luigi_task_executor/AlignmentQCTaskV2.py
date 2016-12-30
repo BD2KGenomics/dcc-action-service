@@ -108,7 +108,7 @@ class ConsonanceTaskV2(luigi.Task):
         self.target_tool_url +
         self.redwood_token +
         self.redwood_host +
-        ''.join(map("'{0}'".format, self.parent_uuids)))
+        str(''.join(map("'{0}'".format, self.parent_uuids))))
         return task_uuid
 
 class AlignmentQCCoordinatorV2(luigi.Task):
