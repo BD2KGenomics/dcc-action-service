@@ -57,7 +57,7 @@ class ConsonanceTaskV2(luigi.Task):
     "path": "./tmp/bamstats_report.zip"
   }
 }
-        '''
+'''
         print "THE JSON: "+json_str
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
