@@ -163,15 +163,13 @@ class AlignmentQCCoordinatorV2(luigi.Task):
                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Xenograft - |^Cell line - ", specimen["submitter_specimen_type"]) and \
                                    sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_alignment_qc_report"])):
                             print "HIT!!!! "+analysis["analysis_type"]+" "+str(hit["_source"]["flags"]["normal_alignment_qc_report"])+" "+specimen["submitter_specimen_type"]
-                            files = []
-                            file_uuids = []
-                            bundle_uuids = []
-                            parent_uuids = {}
+                            parent_uuids = []
+                            parent_uuids.append(sample["sample_uuid"])
                             for file in analysis["workflow_outputs"]:
                                 if file["file_type"] == "bam":
                                     print "  + will run report for %s file" % (file["file_path"])
                                     if len(listOfJobs) < int(self.max_jobs):
-                                        listOfJobs.append(ConsonanceTaskV2(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filename=file["file_path"], file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"]), bundle_uuid = analysis["bundle_uuid"], parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
+                                        listOfJobs.append(ConsonanceTaskV2(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filename=file["file_path"], file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"]), bundle_uuid = analysis["bundle_uuid"], parent_uuids = parent_uuids, tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
         # these jobs are yielded to
         return listOfJobs
 
