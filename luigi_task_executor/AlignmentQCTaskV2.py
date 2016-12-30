@@ -103,7 +103,7 @@ class ConsonanceTaskV2(luigi.Task):
         #This helps make the task idempotent; it that it
         #always has the same task id for the same inputs
         task_uuid = uuid5(uuid.NAMESPACE_DNS, self.filename +
-        self.file_uuid + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)))
+        str(self.file_uuid) + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host + ''.join(map("'{0}'".format, self.parent_uuids)))
         return task_uuid
 
 class AlignmentQCCoordinatorV2(luigi.Task):
