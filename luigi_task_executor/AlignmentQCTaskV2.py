@@ -168,7 +168,7 @@ class AlignmentQCCoordinatorV2(luigi.Task):
                                 if file["file_type"] == "bam":
                                     print "  + will run report for %s file" % (file["file_path"])
                                     if len(listOfJobs) < int(self.max_jobs):
-                                        listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filename=file["file_path"], file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"]), bundle_uuid = analysis["bundle_uuid"], parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
+                                        listOfJobs.append(ConsonanceTaskV2(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, filename=file["file_path"], file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"]), bundle_uuid = analysis["bundle_uuid"], parent_uuids = parent_uuids.keys(), tmp_dir=self.tmp_dir, image_descriptor=self.image_descriptor))
         # these jobs are yielded to
         return listOfJobs
 
