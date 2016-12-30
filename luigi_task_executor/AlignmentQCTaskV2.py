@@ -16,6 +16,7 @@ import sys
 
 # TODO
 # * I think we want to use S3 for our touch files (aka lock files) since that will be better than local files that could be lost/deleted
+# * I have the consonance call turned off here until I figure out why bamstats on rnaseq produces an empty report
 
 class ConsonanceTaskV2(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
