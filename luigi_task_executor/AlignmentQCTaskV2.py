@@ -102,6 +102,8 @@ class ConsonanceTaskV2(luigi.Task):
         #this id will not change if the inputs are the same
         #This helps make the task idempotent; it that it
         #always has the same task id for the same inputs
+        reload(sys)
+        sys.setdefaultencoding('utf8')
         task_uuid = uuid5(uuid.NAMESPACE_DNS, self.filename + self.file_uuid + self.target_tool + self.target_tool_url + self.redwood_token + self.redwood_host)
         return task_uuid
 
