@@ -44,20 +44,19 @@ class ConsonanceTaskV2(luigi.Task):
         # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
         json_str = '''{
-"bam_input":
-{
-    "class": "File",
-    "path": "redwood://%s/%s/%s/%s"
-},
-            ''' % (self.redwood_host, self.bundle_uuid, self.file_uuid, self.filename)
-
-'''"bamstats_report" :
-  {
-    "class": "File",
-    "path": "./tmp/bamstats_report.zip"
-  }
-}
-'''
+        "bam_input":
+        {
+            "class": "File",
+            "path": "redwood://%s/%s/%s/%s"
+        },
+                    ''' % (self.redwood_host, self.bundle_uuid, self.file_uuid, self.filename)
+        json_str = json_str + '''"bamstats_report" :
+          {
+            "class": "File",
+            "path": "./tmp/bamstats_report.zip"
+          }
+        }
+        '''
         print "THE JSON: "+json_str
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
