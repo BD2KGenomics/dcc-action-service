@@ -106,8 +106,8 @@ class CNVCoordinator(luigi.Task):
             i += 1
             if i >= 10: break
 
-        for key, group in grouped_by_donor:
-            print("donor {} with {} samples\n\n".format(key, str(len(group))))
+        for key in grouped_by_donor:
+            print("donor {} with {} samples\n\n".format(key, str(len(grouped_by_donor[key]))))
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
 
