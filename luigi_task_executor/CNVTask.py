@@ -83,7 +83,8 @@ class CNVCoordinator(luigi.Task):
         listOfJobs = []
 
         #search es index for metadata telling us the cnv workflow has not yet been run.
-        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_cnv_workflow" : "false"}},{"term" : {"flags.tumor_cnv_workflow" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
+        #TODO: switch rna-seq with cnv - temp for testing
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_cgl_workflow_3_0_x" : "false"}},{"term" : {"flags.tumor_rna_seq_cgl_workflow_3_0_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
