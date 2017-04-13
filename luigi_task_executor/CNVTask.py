@@ -90,9 +90,9 @@ class CNVCoordinator(luigi.Task):
         print("Got %d Hits:" % res['hits']['total'])
 
         grouped_by_donor = {}
-
+        i = 0
         for hit in res['hits']['hits']:
-
+            print("New hit starts here:")
             print(hit)
             #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
@@ -102,6 +102,9 @@ class CNVCoordinator(luigi.Task):
                 grouped_by_donor[hit["_source"]["donor_uuid"]] = [hit["_source"]]
             else:
                 grouped_by_donor[hit["_source"]["donor_uuid"]].append(hit["_source"])
+
+            i += 1
+            if i >= 10: break
 
         for key, group in grouped_by_donor:
             print("donor {} with {} samples\n\n".format(key, str(len(group))))
