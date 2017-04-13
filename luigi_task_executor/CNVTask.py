@@ -93,11 +93,17 @@ class CNVCoordinator(luigi.Task):
             #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
-            #group by donor_uuid
-            for key, group in groupby(hit["_source"], key=itemgetter("donor_uuid")):
-                print("Next donor {} with {} samples".format(key, len(group)))
-                print(group)
+            grouped_by_donor = {}
 
+            #group by donor_uuid
+            for sample in hit["_source"]:
+                if sample["donor_uuid"] not in grouped_by_donor:
+                    grouped_by_donor[sample["donor_uuid"]] = [sample]
+                else:
+                    grouped_by_donor[sample["donor_uuid"]].append(sample)
+
+            for key, group in grouped_by_donor:
+                print("donor {} with {} samples\n\n".format(key, str(len(group))))
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
 
