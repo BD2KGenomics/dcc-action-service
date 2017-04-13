@@ -17,6 +17,7 @@ import sys
 import copy
 
 from itertools import groupby
+from operator import itemgetter
 from elasticsearch import Elasticsearch
 
 #for hack to get around non self signed certificates
@@ -93,7 +94,7 @@ class CNVCoordinator(luigi.Task):
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
             #group by donor_uuid
-            for key, group in groupby(hit["_source"], lambda item: item["donor_uuid"]):
+            for key, group in groupby(hit["_source"], key=itemgetter("donor_uuid")):
                 print("Next donor {} with {} samples".format(key, len(group)))
                 print(group)
 
