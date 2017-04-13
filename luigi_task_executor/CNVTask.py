@@ -88,22 +88,23 @@ class CNVCoordinator(luigi.Task):
         res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_cgl_workflow_3_0_x" : "false"}},{"term" : {"flags.tumor_rna_seq_cgl_workflow_3_0_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         print("Got %d Hits:" % res['hits']['total'])
+
+        grouped_by_donor = {}
+
         for hit in res['hits']['hits']:
 
+            print(hit)
             #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
-            grouped_by_donor = {}
-
             #group by donor_uuid
-            for sample in hit["_source"]:
-                if sample["donor_uuid"] not in grouped_by_donor:
-                    grouped_by_donor[sample["donor_uuid"]] = [sample]
-                else:
-                    grouped_by_donor[sample["donor_uuid"]].append(sample)
+            if hit["_source"]["donor_uuid"] not in grouped_by_donor:
+                grouped_by_donor[hit["_source"]["donor_uuid"]] = [hit["_source"]]
+            else:
+                grouped_by_donor[hit["_source"]["donor_uuid"]].append(hit["_source"])
 
-            for key, group in grouped_by_donor:
-                print("donor {} with {} samples\n\n".format(key, str(len(group))))
+        for key, group in grouped_by_donor:
+            print("donor {} with {} samples\n\n".format(key, str(len(group))))
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
 
