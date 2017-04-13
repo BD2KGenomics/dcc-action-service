@@ -91,10 +91,8 @@ class CNVCoordinator(luigi.Task):
             #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
-            hit["_source"].sort(key=lambda x: x["donor_uuid"]) #sort by donor uuid
-
             #group by donor_uuid
-            for key, group in groupby(hit["_source"], lambda x: x["donor_uuid"]):
+            for key, group in groupby(hit["_source"], lambda item: item["donor_uuid"]):
                 print("Next donor {} with {} samples".format(key, len(group)))
                 print(group)
 
