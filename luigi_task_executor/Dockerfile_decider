@@ -61,8 +61,13 @@ WORKDIR ${LUIGI_RUNS_PATH}
 RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
 
 #install the Luigi pipeline decider scripts in the run directory
+COPY run_Luigi_Deciders.sh .
+RUN chown ubuntu:ubuntu run_Luigi_Deciders.sh
+RUN chmod a+x run_Luigi_Deciders.sh
+
 COPY RNA-Seq.py . 
 RUN chown ubuntu:ubuntu RNA-Seq.py
+
 
 #install Luigi and components for recording Luigi history in case we implement task history
 COPY requirements.txt /tmp
@@ -96,6 +101,8 @@ RUN chown ubuntu:ubuntu /tmp/decider_log
 COPY setup_decider_jobs.sh /tmp/setup_decider_jobs.sh
 RUN chmod a+x /tmp/setup_decider_jobs.sh
 RUN chown ubuntu:ubuntu /tmp/setup_decider_jobs.sh
+
+
 
 #allow ubuntu (and all other users) to execute sudo without a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers

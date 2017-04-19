@@ -14,10 +14,14 @@ sudo luigid --background
 #run cron in forground so container doesn't stop
 #if cron is run without '-f' it will launch cron
 #in the background the command will end and the 
-#container will exit
-#sudo cron -f 
+#container will exit. 
+#The Docker container should be
+#run in the background with the '-d' switch so it doesn't
+#block the terminal
+sudo cron -f 
 
+#for testing:
 #run cron in background and run tail so container
 #doesn't exit and we can see log 
-sudo cron && sudo tail -f /tmp/decider_log
+#sudo cron && sudo tail -f /tmp/decider_log
 

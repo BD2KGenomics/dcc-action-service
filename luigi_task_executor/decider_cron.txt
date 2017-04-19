@@ -20,12 +20,21 @@
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
 # m h  dom mon dow   command
-#run the cron job using bash; in case #!/bin/bash missing in script
+#have cron use bash here and run the cron job using bash; in case #!/bin/bash missing in script
 SHELL=/bin/bash
-#0 * * * * /home/ubuntu/gitroot/BD2KGenomics/dcc-action/luigi_task_executor/run_Luigi_Deciders.sh
+#crontab does not use the PATH from etc/environment so we have to set our 
+#own PATH so the consonance command and other tools can be found
+#in the decider scripts
+PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 
-#test cron for to see if it is working
+#Java should have been installed in the Dockerfile here 
+JAVA_HOME="/usr/lib/jvm/java-8-oracle"
+
+* * * * * /home/ubuntu/luigi_decider_runs/run_Luigi_Deciders.sh
+
+#test cron to see if it is working
 * * * * * echo "cron job executed as $USER!" >> /tmp/decider_log 2>&1
+
 #test cron that will run cron job as $USER (not sure this works)
 #* * * * * su ubuntu -c 'echo "su cron job executed as $USER!" >> /tmp/decider_log 2>&1'
 #test cron for root
