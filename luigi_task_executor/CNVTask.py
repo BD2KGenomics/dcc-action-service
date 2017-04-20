@@ -29,8 +29,35 @@ from luigi.s3 import S3Target
 import boto
 
 class DockstoreTask(luigi.Task):
+    redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
+    redwood_token = luigi.Parameter("must_be_defined")
+    redwood_client_path = luigi.Parameter(default='/ucsc-storage-client')
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
 
-    
+    normal_sample = luigi.Parameter("must be define")
+    tumor_sample = luigi.Parameter("must be defined")
+
+    test_mode = luigi.BooleanParameter(default=False)
+
+    target_tool_url = luigi.Parameter(default="https://github.com/BD2KGenomics/dockstore_workflow_cnv")
+    workflow_type = luigi.Parameter(default="CNV")
+    image_descriptor = luigi.Parameter("must be defined")
+
+    tmp_dir = luigi.Parameter(default='/datastore')
+
+    #meta_data_json = luigi.Parameter(default="must input metadata") #is this arg necessary w this weird setup?
+    touch_file_path = luigi.Parameter(default='must input touch file path')
+
+    json_dict = {}
+
+    #path will be bath in redwood?
+    json_dict["TUMOR_BAM"] = {"class" : "File", "path" : "TODO"}
+    json_dict["NORMAL_BAM"] = {"class" : "File", "path" : "TODO"}
+    json_dict["SAMPLE_ID"] = {"class" : "File", "path" : "TODO"}
+    json_dict["CENTROMERES"] = {"class" : "File", "path" : "TODO"}
+    json_dict["TARGETS"] = {"class" : "File", "path" : "TODO"}
+    json_dict["GENO_FA_GZ"] = {"class" : "File", "path" : "TODO"}
+
 
     def run(self):
         pass
@@ -99,14 +126,28 @@ class CNVCoordinator(luigi.Task):
 
             cf = 0
             for specimen in hit["_source"]["specimen"]:
+                normal_samples = []
+                tumor_samples = []
                 for sample in specimen["samples"]:
                     for analysis in sample["analysis"]:
                         if analysis["analysis_type"] != "CNV":
                             cf = 1
+
+                        if specimen["submitter_specimen_type"] == "Normal - blood": #is this right? - need to see data
+                            normal_samples.append(sample)
+                        else:
+                            tumor_samples.append(sample)
+
                 if cf == 1: #if any of the sample analysis types is not CNV, continue
                     continue
 
-                print(specimen)
+                touch_file_path = "" # TODO - or should it be done in dockstoretask?
+
+                for normal_sample in normal_samples:
+                    for tumor_sample in tumor_samples: #run every normal sample vs tumor samples.
+                        listOfJobs.append(DockstoreTask(normal_sample=normal_sample, tumor_sample=tumor_sample, redwood_host=self.redwood_host, 
+                                                        redwood_token=self.redwood_token, redwood_client_path=self.redwood_client_path, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool,
+                                                        touch_file_path=touch_file_path, test_mode=self.test_mode)) #TODO : insert rest of args
 
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
