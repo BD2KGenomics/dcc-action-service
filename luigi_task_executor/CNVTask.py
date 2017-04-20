@@ -92,10 +92,18 @@ class CNVCoordinator(luigi.Task):
         grouped_by_donor = {}
         i = 0
         for hit in res['hits']['hits']:
-            print("New hit starts here:")
-            print(hit)
+            #print("New hit starts here:")
+            #print(hit)
             #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
+
+            cf = 0
+            for sample in specimen["samples"]:
+                for analysis in sample["analysis"]:
+                    if analysis["analysis_type"] != "CNV":
+                        cf = 1
+            if cf == 1: #if any of the sample analysis types is not CNV, continue
+                continue
 
             #group by donor_uuid
             if hit["_source"]["donor_uuid"] not in grouped_by_donor:
@@ -103,11 +111,11 @@ class CNVCoordinator(luigi.Task):
             else:
                 grouped_by_donor[hit["_source"]["donor_uuid"]].append(hit["_source"])
 
-            i += 1
-            if i >= 10: break
 
         for key in grouped_by_donor:
-            print("donor {} with {} samples\n\n".format(key, str(len(grouped_by_donor[key]))))
+            samples = []
+        #    print("donor {} with {} samples\n\n".format(key, str(len(grouped_by_donor[key]))))
+
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
 
