@@ -30,7 +30,7 @@ import boto
 
 class DockstoreTask(luigi.Task):
 
-    #args here, create json
+    
 
     def run(self):
         pass
@@ -98,23 +98,15 @@ class CNVCoordinator(luigi.Task):
             #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
             cf = 0
-            for sample in specimen["samples"]:
-                for analysis in sample["analysis"]:
-                    if analysis["analysis_type"] != "CNV":
-                        cf = 1
-            if cf == 1: #if any of the sample analysis types is not CNV, continue
-                continue
+            for specimen in hit["_source"]["specimen"]:
+                for sample in specimen["samples"]:
+                    for analysis in sample["analysis"]:
+                        if analysis["analysis_type"] != "CNV":
+                            cf = 1
+                if cf == 1: #if any of the sample analysis types is not CNV, continue
+                    continue
 
-            #group by donor_uuid
-            if hit["_source"]["donor_uuid"] not in grouped_by_donor:
-                grouped_by_donor[hit["_source"]["donor_uuid"]] = [hit["_source"]]
-            else:
-                grouped_by_donor[hit["_source"]["donor_uuid"]].append(hit["_source"])
-
-
-        for key in grouped_by_donor:
-            samples = []
-        #    print("donor {} with {} samples\n\n".format(key, str(len(grouped_by_donor[key]))))
+                print(specimen)
 
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
