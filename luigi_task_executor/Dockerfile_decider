@@ -40,45 +40,29 @@ ENV JAVA_HOME="/usr/lib/jvm/java-8-oracle"
 EXPOSE 8082
 
 # set up the path for the Consonance client
-WORKDIR /bin
-ENV PATH /bin:$PATH
+WORKDIR /home/ubuntu/bin
+ENV PATH /home/ubuntu/bin:$PATH
+RUN chown ubuntu:ubuntu /home/ubuntu/bin 
+
 #RUN wget https://github.com/Consonance/consonance/releases/download/2.0.0-alpha.15/consonance -O ./consonance
-RUN wget https://github.com/Consonance/consonance/releases/download/$CONSONANCE_VERSION/consonance -O ./consonance
+RUN wget https://github.com/Consonance/consonance/releases/download/"${CONSONANCE_VERSION}"/consonance -O ./consonance
 #allow the ubuntu user to run the Consonance client
 RUN chmod a+x consonance
 RUN chown ubuntu:ubuntu consonance
 
-#install pip, tools and virtualenv in case we need them
-#currently the Luigi cron script uses virtualenv
+
+ENV CONSONANCE_JAR_DIR=/home/ubuntu/.consonance/self-installs
+WORKDIR $CONSONANCE_JAR_DIR
+RUN chown -R ubuntu:ubuntu /home/ubuntu/.consonance
+
+RUN wget --no-verbose --no-check-certificate https://github.com/Consonance/consonance/releases/download/"${CONSONANCE_VERSION}"/consonance-client-"${CONSONANCE_VERSION}".jar -O ./consonance-client-"${CONSONANCE_VERSION}".jar
+RUN chmod a+x consonance-client-"${CONSONANCE_VERSION}".jar
+RUN chown ubuntu:ubuntu consonance-client-"${CONSONANCE_VERSION}".jar
+
+#install pip, tools
 RUN pip install --upgrade pip
 RUN pip install -U pip setuptools
 
-RUN pip install virtualenv
-RUN pip install boto3
-
-#install the Consonance token and Consonance server endpoint
-#so ubuntu can use Consonance
-#COPY config /home/ubuntu/.consonance/config
-
-#RUN consonance
-
-#setup the directory from where the Luigi decider scripts will be run
-ENV LUIGI_RUNS_PATH=/home/ubuntu/luigi_decider_runs
-WORKDIR ${LUIGI_RUNS_PATH}
-RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
-
-#setup the virtual environment that the Luigi decider
-#crontab script uses
-RUN virtualenv luigienv
-ENV VIRTUAL_ENV_PATH=${LUIGI_RUNS_PATH}/luigienv/bin
-
-#install the Luigi pipeline decider scripts in the run directory
-COPY run_Luigi_Deciders.sh .
-RUN chown ubuntu:ubuntu run_Luigi_Deciders.sh
-RUN chmod a+x run_Luigi_Deciders.sh
-
-COPY RNA-Seq.py . 
-RUN chown ubuntu:ubuntu RNA-Seq.py
 
 
 
@@ -104,10 +88,34 @@ RUN touch /tmp/decider_log
 RUN chmod 644 /tmp/decider_log
 RUN chown ubuntu:ubuntu /tmp/decider_log
 
+
+
 #get the crontab for ubuntu deciders
-COPY setup_decider_jobs.sh /tmp/setup_decider_jobs.sh
-RUN chmod a+x /tmp/setup_decider_jobs.sh
-RUN chown ubuntu:ubuntu /tmp/setup_decider_jobs.sh
+COPY setup_decider_jobs.sh /home/ubuntu/setup_decider_jobs.sh
+RUN chmod a+x /home/ubuntu/setup_decider_jobs.sh
+RUN chown ubuntu:ubuntu /home/ubuntu/setup_decider_jobs.sh
+
+
+#setup the directory from where the Luigi decider scripts will be run
+ENV LUIGI_RUNS_PATH=/home/ubuntu/luigi_decider_runs
+WORKDIR ${LUIGI_RUNS_PATH}
+RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
+
+#setup the virtual environment that the Luigi decider
+#crontab script uses
+RUN virtualenv luigienv
+ENV VIRTUAL_ENV_PATH=${LUIGI_RUNS_PATH}/luigienv/bin
+#make sure ubuntu owns the virtual env path
+RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
+
+#install the Luigi pipeline decider scripts in the run directory
+COPY run_Luigi_Deciders.sh .
+RUN chown ubuntu:ubuntu run_Luigi_Deciders.sh
+RUN chmod a+x run_Luigi_Deciders.sh
+
+COPY RNA-Seq.py . 
+RUN chown ubuntu:ubuntu RNA-Seq.py
+
 
 
 
@@ -125,7 +133,7 @@ RUN pip install awscli --upgrade --user
 ENV PATH /home/ubuntu/.local/bin:$PATH
 
 
-CMD ["/tmp/setup_decider_jobs.sh"]
+CMD ["/home/ubuntu/setup_decider_jobs.sh"]
 
 # Run the command on container startup in test mode
 #CMD sudo cron && sudo tail -f /tmp/decider_log

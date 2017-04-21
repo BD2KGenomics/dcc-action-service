@@ -30,7 +30,7 @@ PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/us
 * * * * * /home/ubuntu/luigi_decider_runs/run_Luigi_Deciders.sh
 
 #test cron to see if it is working
-* * * * * echo "cron job executed as $USER!" >> /tmp/decider_log 2>&1
+#* * * * * echo "cron job executed as $USER!" >> /tmp/decider_log 2>&1
 
 #test cron that will run cron job as $USER (not sure this works)
 #* * * * * su ubuntu -c 'echo "su cron job executed as $USER!" >> /tmp/decider_log 2>&1'

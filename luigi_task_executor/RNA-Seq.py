@@ -40,10 +40,12 @@ class ConsonanceTask(luigi.Task):
     target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/ucsc_cgl/rnaseq-cgl-pipeline")
     workflow_type = luigi.Parameter(default="rna_seq_quantification")
     image_descriptor = luigi.Parameter("must be defined")
- 
-    starfilename = luigi.Parameter(default="redwood://storage.ucsc-cgl.org/d0117ff1-cf53-43a0-aaab-cb15809fbb49/ca79c317-e410-591f-b802-3a0be6b658b7/starIndex_hg38_no_alt.tar.gz")
-    rsemfilename = luigi.Parameter(default="redwood://storage.ucsc-cgl.org/d0117ff1-cf53-43a0-aaab-cb15809fbb49/b850460d-23c0-57a4-9d4b-af60726476a5/rsem_ref_hg38_no_alt.tar.gz")
-    kallistofilename = luigi.Parameter(default="redwood://storage.ucsc-cgl.org/d0117ff1-cf53-43a0-aaab-cb15809fbb49/c92d30f3-2731-56b1-b8e4-41d09b1bb2dc/kallisto_hg38.idx")
+
+
+    #TODO figure out how to download these from a different storage system 
+    starfilename = luigi.Parameter(default="redwood://"+self.redwood_host+"/d0117ff1-cf53-43a0-aaab-cb15809fbb49/ca79c317-e410-591f-b802-3a0be6b658b7/starIndex_hg38_no_alt.tar.gz")
+    rsemfilename = luigi.Parameter(default="redwood://"+self.redwood_host+"/d0117ff1-cf53-43a0-aaab-cb15809fbb49/b850460d-23c0-57a4-9d4b-af60726476a5/rsem_ref_hg38_no_alt.tar.gz")
+    kallistofilename = luigi.Parameter(default="redwood://"+self.redwood_host+"/d0117ff1-cf53-43a0-aaab-cb15809fbb49/c92d30f3-2731-56b1-b8e4-41d09b1bb2dc/kallisto_hg38.idx")
 
     disable_cutadapt = luigi.Parameter(default="false")
     save_bam = luigi.Parameter(default="true")
@@ -452,22 +454,25 @@ class RNASeqCoordinator(luigi.Task):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
 
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
-        print(str("https://"+self.redwood_host+":8444/entities?page=0"))
+#        print(str("https://"+self.redwood_host+":8444/entities?page=0"))
+        print(str("metadata."+self.redwood_host+"/entities?page=0"))
 
 #hack to get around none self signed certificates
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0"), context=ctx).read()
+#        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0"), context=ctx).read()
+        json_str = urlopen(str("metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
  
-#        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0")).read()
+##        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0")).read()
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
         for i in range(0, metadata_struct["totalPages"]):
             print("** CURRENT METADATA TOTAL PAGES: "+str(i))
-            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i)), context=ctx).read()
-#            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i))).read()
+            json_str = urlopen(str("metadata."+self.redwood_host+"/entities?page="+str(i)), context=ctx).read()
+#            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i)), context=ctx).read()
+##            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i))).read()
             metadata_struct = json.loads(json_str)
             for file_hash in metadata_struct["content"]:
                 self.bundle_uuid_filename_to_file_uuid[file_hash["gnosId"]+"_"+file_hash["fileName"]] = file_hash["id"]
@@ -708,6 +713,7 @@ class RNASeqCoordinator(luigi.Task):
                                     print("total of {} files in this {} job; job {} of {}".format(str(len(paired_files) + (len(tar_files) + len(single_files))), 
                                                                                              hit["_source"]["program"], str(len(listOfJobs)+1), str(self.max_jobs)))
                                     listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, \
+                                         es_index_host=self.es_index_host, es_index_port=es.index_port, \
                                          image_descriptor=self.image_descriptor, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
                                          parent_uuids = parent_uuids.keys(), \
                                          single_filenames=single_files, single_file_uuids = single_file_uuids, single_bundle_uuids = single_bundle_uuids, \

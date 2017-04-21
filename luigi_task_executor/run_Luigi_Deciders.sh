@@ -5,6 +5,15 @@ set -o nounset
 #exit the script if any statement returns a non-true return value
 set -o errexit
 
+#set up storage information variable in case it is not run from Docker compose
+#which will poplulate the variables
+#set variables to default values if they are not already set
+#http://stackoverflow.com/questions/2013547/assigning-default-values-to-shell-variables-with-a-single-command-in-bash
+: ${STORAGE_SERVER:=storage_server}
+: ${STORAGE_ACCESS_TOKEN:=storage_token}
+: ${ELASTIC_SEARCH_SERVER:=elastic_search_server}
+: ${ELASTIC_SEARCH_PORT:=elastic_search_port}
+
 
 #crontab does not use the PATH from etc/environment so we have to set our 
 #own PATH so the consonance command and other tools can be found
@@ -55,18 +64,27 @@ echo "Running Luigi RNA-Seq decider" >> ${LUIGI_RUNS_PATH}/cron_decider_log.txt
 #--test-mode  > >(tee stdout.txt) 2> >(tee stderr.txt >&2)
 
 #This will be the new run commmand:
-#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --touch-file-bucket ${TOUCH_FILE_BUCKET} --redwood-host ${STORAGE_HOST} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_HOST} --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_HOST} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
 #This can be used for testing: 
-#echo "executing consonance --version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
-#consonance --version > ${LUIGI_RUNS_PATH}/logfile.txt
-##echo "${now} DEBUG!! run of lugi decider!!! redwood token is ${REDWOOD_ACCESS_TOKEN}" > ${LUIGI_RUNS_PATH}/logfile.txt
+echo -e "\n\n"
+echo "${now} DEBUG!! run of luigi decider!!!" >> ${LUIGI_RUNS_PATH}/logfile.txt
+echo "executing consonance --version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
+consonance --version >> ${LUIGI_RUNS_PATH}/logfile.txt
+
+echo "redwood server is ${STORAGE_SERVER}" >> ${LUIGI_RUNS_PATH}/logfile.txt
+echo "redwood token is ${STORAGE_ACCESS_TOKEN}" >> ${LUIGI_RUNS_PATH}/logfile.txt
+
+echo "elastic search server is ${ELASTIC_SEARCH_SERVER}" >> ${LUIGI_RUNS_PATH}/logfile.txt
+echo "elastic search port is ${ELASTIC_SEARCH_PORT}" >> ${LUIGI_RUNS_PATH}/logfile.txt
+
 echo "executing java -version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
 java -version >> ${LUIGI_RUNS_PATH}/logfile.txt 2>&1
-echo "\nexecuting aws test" >> ${LUIGI_RUNS_PATH}/logfile.txt
+
+echo "executing aws test" >> ${LUIGI_RUNS_PATH}/logfile.txt
 aws   >> ${LUIGI_RUNS_PATH}/logfile.txt 2>&1
 
-echo "${now} DEBUG!! run of lugi decider!!!" >> ${LUIGI_RUNS_PATH}/logfile.txt
+
 
 
 #for some reason set -o nounset thinks deactivate is an uninitialized variable so turn nounset off
