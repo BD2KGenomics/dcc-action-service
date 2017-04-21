@@ -54,12 +54,18 @@ echo "Running Luigi RNA-Seq decider" >> ${LUIGI_RUNS_PATH}/cron_decider_log.txt
 ##PYTHONPATH=${DECIDER_SOURCE_PATH} luigi --module RNA-Seq RNASeqCoordinator --redwood-client-path /home/ubuntu/ucsc-storage-client/ --redwood-host storage.ucsc-cgl.org --redwood-token $REDWOOD_ACCESS_TOKEN --es-index-host 172.31.25.227 --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --local-scheduler --tmp-dir /datastore --max-jobs 50 > cron_log_RNA-Seq_decider_stdout.txt 2> ${LUIGI_RUNS_PATH}/cron_log_RNA-Seq_decider_stderr.txt
 #--test-mode  > >(tee stdout.txt) 2> >(tee stderr.txt >&2)
 
+#This will be the new run commmand:
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --touch-file-bucket ${TOUCH_FILE_BUCKET} --redwood-host ${STORAGE_HOST} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_HOST} --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
 #This can be used for testing: 
-#consonance --version > ${LUIGI_RUNS_PATH}/consonancelogfile.txt
+#echo "executing consonance --version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
+#consonance --version > ${LUIGI_RUNS_PATH}/logfile.txt
 ##echo "${now} DEBUG!! run of lugi decider!!! redwood token is ${REDWOOD_ACCESS_TOKEN}" > ${LUIGI_RUNS_PATH}/logfile.txt
 echo "executing java -version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
 java -version >> ${LUIGI_RUNS_PATH}/logfile.txt 2>&1
+echo "\nexecuting aws test" >> ${LUIGI_RUNS_PATH}/logfile.txt
+aws   >> ${LUIGI_RUNS_PATH}/logfile.txt 2>&1
+
 echo "${now} DEBUG!! run of lugi decider!!!" >> ${LUIGI_RUNS_PATH}/logfile.txt
 
 

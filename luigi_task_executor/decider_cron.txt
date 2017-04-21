@@ -24,11 +24,8 @@
 SHELL=/bin/bash
 #crontab does not use the PATH from etc/environment so we have to set our 
 #own PATH so the consonance command and other tools can be found
-#in the decider scripts
+#in the decider scripts (this may also be done in the Dockerfile with ENV)
 PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
-
-#Java should have been installed in the Dockerfile here 
-JAVA_HOME="/usr/lib/jvm/java-8-oracle"
 
 * * * * * /home/ubuntu/luigi_decider_runs/run_Luigi_Deciders.sh
 

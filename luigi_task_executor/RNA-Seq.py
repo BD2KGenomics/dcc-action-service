@@ -433,7 +433,6 @@ class RNASeqCoordinator(luigi.Task):
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined") 
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
@@ -443,7 +442,7 @@ class RNASeqCoordinator(luigi.Task):
     process_sample_uuid = luigi.Parameter(default = "")
 
     workflow_version = luigi.Parameter(default="3.2.1-1")
- 
+    touch_file_bucket = luigi.Parameter(default="must be input") 
 
     #Consonance will not be called in test mode
     test_mode = luigi.BooleanParameter(default = False)
@@ -579,7 +578,8 @@ class RNASeqCoordinator(luigi.Task):
 
 #                           touch_file_path_prefix = os.path.join("s3:/", "cgl-core-analysis-run-touch-files", "consonance-jobs", "RNASeq_3_1_x_Coordinator", "3_1_3")
                             workflow_version_dir = self.workflow_version.replace('.', '_') 
-                            touch_file_path_prefix = "cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_Coordinator/" + workflow_version_dir
+#                            touch_file_path_prefix = "cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_Coordinator/" + workflow_version_dir
+                            touch_file_path_prefix = "self.touch_file_bucket/consonance-jobs/RNASeq_Coordinator/" + workflow_version_dir
                             touch_file_path = touch_file_path_prefix+"/"+hit["_source"]["center_name"]+"_"+hit["_source"]["program"] \
                                                                     +"_"+hit["_source"]["project"]+"_"+hit["_source"]["submitter_donor_id"] \
                                                                     +"_"+specimen["submitter_specimen_id"]
