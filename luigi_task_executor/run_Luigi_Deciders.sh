@@ -13,7 +13,7 @@ set -o errexit
 : ${STORAGE_ACCESS_TOKEN:=storage_token}
 : ${ELASTIC_SEARCH_SERVER:=elastic_search_server}
 : ${ELASTIC_SEARCH_PORT:=elastic_search_port}
-
+: ${TOUCH_FILE_DIRECTORY:=touch_file_directory}
 
 #crontab does not use the PATH from etc/environment so we have to set our 
 #own PATH so the consonance command and other tools can be found
@@ -57,16 +57,10 @@ sudo luigid --background
 echo "Running Luigi RNA-Seq decider" >> ${LUIGI_RUNS_PATH}/cron_decider_log.txt
 
 # run the decider
-#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --redwood-client-path /home/ubuntu/ucsc-storage-client/ --redwood-host storage.ucsc-cgl.org --redwood-token $REDWOOD_ACCESS_TOKEN --es-index-host 172.31.25.227 --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
-
-
-##PYTHONPATH=${DECIDER_SOURCE_PATH} luigi --module RNA-Seq RNASeqCoordinator --redwood-client-path /home/ubuntu/ucsc-storage-client/ --redwood-host storage.ucsc-cgl.org --redwood-token $REDWOOD_ACCESS_TOKEN --es-index-host 172.31.25.227 --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --local-scheduler --tmp-dir /datastore --max-jobs 50 > cron_log_RNA-Seq_decider_stdout.txt 2> ${LUIGI_RUNS_PATH}/cron_log_RNA-Seq_decider_stderr.txt
-#--test-mode  > >(tee stdout.txt) 2> >(tee stderr.txt >&2)
-
 #This will be the new run commmand:
-#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_HOST} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_HOST} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --image-descriptor ~/gitroot/BD2KGenomics/dcc-dockstore-tool-runner/Dockstore.cwl --tmp-dir /datastore --max-jobs 500 > "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LUIGI_RUNS_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
-#This can be used for testing: 
+#These are log file messages used for testing: 
 echo -e "\n\n"
 echo "${now} DEBUG!! run of luigi decider!!!" >> ${LUIGI_RUNS_PATH}/logfile.txt
 echo "executing consonance --version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
@@ -77,6 +71,8 @@ echo "redwood token is ${STORAGE_ACCESS_TOKEN}" >> ${LUIGI_RUNS_PATH}/logfile.tx
 
 echo "elastic search server is ${ELASTIC_SEARCH_SERVER}" >> ${LUIGI_RUNS_PATH}/logfile.txt
 echo "elastic search port is ${ELASTIC_SEARCH_PORT}" >> ${LUIGI_RUNS_PATH}/logfile.txt
+
+echo "touch file directory is ${TOUCH_FILE_DIRECTORY}" >> ${LUIGI_RUNS_PATH}/logfile.txt
 
 echo "executing java -version test" >> ${LUIGI_RUNS_PATH}/logfile.txt
 java -version >> ${LUIGI_RUNS_PATH}/logfile.txt 2>&1

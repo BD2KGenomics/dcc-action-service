@@ -19,12 +19,24 @@ echo "$aws_str" > /home/ubuntu/.aws/config
 
 #set variables to default values if they are not already set
 #http://stackoverflow.com/questions/2013547/assigning-default-values-to-shell-variables-with-a-single-command-in-bash
-: ${CONSONANCE_WEB_SERVICE:=consonance_web_service}
-: ${CONSONANCE_TOKEN:=consonance_token}
+: ${CONSONANCE_WEB_SERVICE_URL:=consonance_web_service_url}
+: ${CONSONANCE_ACCESS_TOKEN:=consonance_access_token}
 #set up Consonance credentials so the deciders can call Consonance to launch the instances
 mkdir -p /home/ubuntu/.consonance
-consonance_str=$'[webservice]\nbase_path = '"${CONSONANCE_WEB_SERVICE}"$'\ntoken = '"${CONSONANCE_TOKEN}"
+consonance_str=$'[webservice]\nbase_path = '"${CONSONANCE_WEB_SERVICE_URL}"$'\ntoken = '"${CONSONANCE_ACCESS_TOKEN}"
 echo "$consonance_str" > /home/ubuntu/.consonance/config
+
+
+
+: ${STORAGE_SERVER:=storage_server}
+: ${STORAGE_ACCESS_TOKEN:=storage_token}
+: ${ELASTIC_SEARCH_SERVER:=elastic_search_server}
+: ${ELASTIC_SEARCH_PORT:=elastic_search_port}
+: ${TOUCH_FILE_DIRECTORY:=touch_file_directory}
+
+env_str=$'STORAGE_SERVER='"${STORAGE_SERVER}"$'\nSTORAGE_ACCESS_TOKEN='"${STORAGE_ACCESS_TOKEN}"$'\nELASTIC_SEARCH_SERVER='"${ELASTIC_SEARCH_SERVER}"$'\nELASTIC_SEARCH_PORT='"${ELASTIC_SEARCH_PORT}"$'\nTOUCH_FILE_DIRECTORY='"${TOUCH_FILE_DIRECTORY}"
+echo "$env_str" > /home/ubuntu/env_vars
+
 
 #start the Luigi daemon in the background
 #so the action service that monitors tasks
