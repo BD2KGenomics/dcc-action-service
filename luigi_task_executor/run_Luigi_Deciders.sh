@@ -24,6 +24,8 @@ LUIGI_RUNS_PATH=/home/ubuntu/luigi_decider_runs
 DECIDER_SOURCE_PATH=${LUIGI_RUNS_PATH}
 LOG_FILE_PATH=/home/ubuntu/logs
 mkdir -p ${LOG_FILE_PATH}
+sudo chown -R ubuntu:ubuntu ${LOG_FILE_PATH}
+touch ${LOG_FILE_PATH}/logfile.txt
 
 echo "Starting decider cron job" > ${LOG_FILE_PATH}/cron_decider_log.txt
 
