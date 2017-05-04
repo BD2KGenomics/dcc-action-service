@@ -39,8 +39,6 @@ class ConsonanceTask(luigi.Task):
     target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/ucsc_cgl/rnaseq-cgl-pipeline")
     workflow_type = luigi.Parameter(default="rna_seq_quantification")
     image_descriptor = luigi.Parameter("must be defined")
-    tool_dockstore_id = luigi.Parameter("must be defined")
-
 
     disable_cutadapt = luigi.Parameter(default="false")
     save_bam = luigi.Parameter(default="true")
@@ -83,6 +81,8 @@ class ConsonanceTask(luigi.Task):
     meta_data_json = luigi.Parameter(default="must input metadata")
     touch_file_path = luigi.Parameter(default='must input touch file path')
 
+    vm_region = luigi.Parameter(default='us-east-1')
+    
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
 
@@ -326,12 +326,12 @@ class ConsonanceTask(luigi.Task):
             "workflow_type": "%s",
             "tmpdir": "%s",
             "vm_instance_type": "c4.8xlarge",
-            "vm_region": "us-west-2",
+            "vm_region": "%s",
             "vm_location": "aws",
             "vm_instance_cores": 36,
             "vm_instance_mem_gb": 60,
             "output_metadata_json": "/tmp/final_metadata.json"
-        }''' % (base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir )
+        }''' % (base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
         print(dockstore_json_str, file=p)
         p.close()
@@ -343,8 +343,8 @@ class ConsonanceTask(luigi.Task):
 
         # execute consonance run, parse the job UUID
 #        cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
-        cmd = ["consonance", "run",  "--tool-dockstore-id", self.tool_dockstore_id, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
-        cmd_str = ''.join(cmd)
+        cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
+        cmd_str = ' '.join(cmd)
         if self.test_mode == False:
             print("** SUBMITTING TO CONSONANCE **")
             print("executing:"+ cmd_str)
@@ -439,7 +439,6 @@ class RNASeqCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined")
-    tool_dockstore_id = luigi.Parameter("must be defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='1')
@@ -448,6 +447,8 @@ class RNASeqCoordinator(luigi.Task):
 
     workflow_version = luigi.Parameter(default="3.2.1-1")
     touch_file_bucket = luigi.Parameter(default="must be input") 
+
+    vm_region = luigi.Parameter(default='us-east-1')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
@@ -487,6 +488,9 @@ class RNASeqCoordinator(luigi.Task):
             print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             print("Got %d specimens:" % len(hit["_source"]["specimen"]))
             
+            #DEBUGGING ONLY!!!!
+            if(hit["_source"]["program"] != "RNA-Seq-CHR6-TEST"):
+                continue
 
             disable_cutadapt = 'false'
             if(hit["_source"]["project"] == "CHR6"):
@@ -714,7 +718,7 @@ class RNASeqCoordinator(luigi.Task):
                                     print("total of {} files in this {} job; job {} of {}".format(str(len(paired_files) + (len(tar_files) + len(single_files))), 
                                                                                              hit["_source"]["program"], str(len(listOfJobs)+1), str(self.max_jobs)))
                                     listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, \
-                                         image_descriptor=self.image_descriptor, tool_dockstore_id=self.tool_dockstore_id, \
+                                         image_descriptor=self.image_descriptor, vm_region=self.vm_region, \
                                          dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
                                          parent_uuids = parent_uuids.keys(), \
 
