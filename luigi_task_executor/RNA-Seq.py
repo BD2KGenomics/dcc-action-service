@@ -489,8 +489,8 @@ class RNASeqCoordinator(luigi.Task):
             print("Got %d specimens:" % len(hit["_source"]["specimen"]))
             
             #DEBUGGING ONLY!!!!
-            if(hit["_source"]["program"] != "RNA-Seq-CHR6-TEST"):
-                continue
+#            if(hit["_source"]["program"] != "RNA-Seq-CHR6-TEST"):
+#                continue
 
             disable_cutadapt = 'false'
             if(hit["_source"]["project"] == "CHR6"):
