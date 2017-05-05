@@ -62,6 +62,7 @@ echo "Running Luigi RNA-Seq decider" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.10" --workflow-version "3.2.1-1" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-region ${AWS_REGION} --tmp-dir /datastore --max-jobs 2  > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
 #These are log file messages used for testing: 
+'''
 echo -e "\n\n"
 echo "${now} DEBUG!! run of luigi decider!!!" >> ${LOG_FILE_PATH}/logfile.txt
 echo "executing consonance --version test" >> ${LOG_FILE_PATH}/logfile.txt
@@ -80,7 +81,7 @@ java -version >> ${LOG_FILE_PATH}/logfile.txt 2>&1
 
 echo "executing aws test" >> ${LOG_FILE_PATH}/logfile.txt
 aws   >> ${LOG_FILE_PATH}/logfile.txt 2>&1
-
+'''
 
 
 
