@@ -332,7 +332,7 @@ class ConsonanceTask(luigi.Task):
             "vm_instance_cores": 36,
             "vm_instance_mem_gb": 60,
             "output_metadata_json": "/tmp/final_metadata.json"
-        }''' % (self.metadata["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
+        }''' % (self.meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
         print(dockstore_json_str, file=p)
         p.close()
