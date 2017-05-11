@@ -442,7 +442,7 @@ class RNASeqCoordinator(luigi.Task):
     image_descriptor = luigi.Parameter("must be defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.13")
     tmp_dir = luigi.Parameter(default='/datastore')
-    max_jobs = luigi.Parameter(default='1')
+    max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
     process_sample_uuid = luigi.Parameter(default = "")
 
@@ -675,7 +675,7 @@ class RNASeqCoordinator(luigi.Task):
                                     tar_bundle_uuids.append(analysis["bundle_uuid"])
                                     parent_uuids[sample["sample_uuid"]] = True
 
-                            if len(listOfJobs) < int(self.max_jobs) and (len(paired_files) + len(tar_files) + len(single_files)) > 0:
+                            if (len(listOfJobs) < int(self.max_jobs) or int(self.max_jobs) < 0) and (len(paired_files) + len(tar_files) + len(single_files)) > 0:
 
                                  if len(tar_files) > 0 and (len(paired_files) > 0 or len(single_files) > 0):
                                      print(('\n\nWARNING: mix of tar files and fastq(.gz) files submitted for' 
