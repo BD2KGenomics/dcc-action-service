@@ -494,6 +494,10 @@ class RNASeqCoordinator(luigi.Task):
 #                continue
 
             disable_cutadapt = 'false'
+
+            if(hit["_source"]["program"] == "Quake Brain scRNA-Seq"):
+                disable_cutadapt = 'true'
+
             if(hit["_source"]["project"] == "CHR6"):
                 rsem_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=rsem_ref_chr6.tar.gz"), context=ctx).read()
                 star_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=starIndex_chr6.tar.gz"), context=ctx).read()
