@@ -29,7 +29,7 @@ import boto
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.13")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.12")
 
     workflow_version = luigi.Parameter(default="must be defined")
 
@@ -119,6 +119,10 @@ class ConsonanceTask(luigi.Task):
 
         #convert the meta data to a python data structure
         meta_data = json.loads(self.meta_data_json)
+        if meta_data["program"] == "Quake Brain scRNA-Seq": 
+            output_base_name = meta_data["submitter_specimen_id"]
+        else:
+            output_base_name = meta_data["submitter_sample_id"]
 
         print("** MAKE JSON FOR WORKER **")
         # create a json for RNA-Seq which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
@@ -246,12 +250,12 @@ class ConsonanceTask(luigi.Task):
 
         json_str += '''
 "output-basename": "%s",
-''' % self.submitter_sample_id
+''' % output_base_name 
 
         json_str += '''
 "output_files": [
         '''
-        new_filename = self.submitter_sample_id + '.tar.gz'
+        new_filename = output_base_name + '.tar.gz'
         json_str += '''
     {
       "class": "File",
@@ -269,7 +273,7 @@ class ConsonanceTask(luigi.Task):
 
 "wiggle_files": [
         '''
-            new_filename = self.submitter_sample_id + '.wiggle.bg'
+            new_filename = output_base_name + '.wiggle.bg'
             json_str += '''
     {
       "class": "File",
@@ -285,7 +289,7 @@ class ConsonanceTask(luigi.Task):
 
 "bam_files": [
         '''
-            new_filename = self.submitter_sample_id + '.sortedByCoord.md.bam'
+            new_filename = output_base_name + '.sortedByCoord.md.bam'
             json_str += '''
     {
       "class": "File",
@@ -440,7 +444,7 @@ class RNASeqCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.13")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.12")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
@@ -494,6 +498,10 @@ class RNASeqCoordinator(luigi.Task):
 #                continue
 
             disable_cutadapt = 'false'
+
+            if(hit["_source"]["program"] == "Quake Brain scRNA-Seq"):
+                disable_cutadapt = 'true'
+
             if(hit["_source"]["project"] == "CHR6"):
                 rsem_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=rsem_ref_chr6.tar.gz"), context=ctx).read()
                 star_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=starIndex_chr6.tar.gz"), context=ctx).read()
