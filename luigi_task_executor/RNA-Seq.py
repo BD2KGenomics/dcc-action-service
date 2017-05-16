@@ -119,6 +119,10 @@ class ConsonanceTask(luigi.Task):
 
         #convert the meta data to a python data structure
         meta_data = json.loads(self.meta_data_json)
+        if meta_data["program"] == "Quake Brain scRNA-Seq": 
+            output_base_name = meta_data["submitter_specimen_id"]
+        else:
+            output_base_name = meta_data["submitter_sample_id"]
 
         print("** MAKE JSON FOR WORKER **")
         # create a json for RNA-Seq which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
@@ -246,12 +250,12 @@ class ConsonanceTask(luigi.Task):
 
         json_str += '''
 "output-basename": "%s",
-''' % self.submitter_sample_id
+''' % output_base_name 
 
         json_str += '''
 "output_files": [
         '''
-        new_filename = self.submitter_sample_id + '.tar.gz'
+        new_filename = output_base_name + '.tar.gz'
         json_str += '''
     {
       "class": "File",
@@ -269,7 +273,7 @@ class ConsonanceTask(luigi.Task):
 
 "wiggle_files": [
         '''
-            new_filename = self.submitter_sample_id + '.wiggle.bg'
+            new_filename = output_base_name + '.wiggle.bg'
             json_str += '''
     {
       "class": "File",
@@ -285,7 +289,7 @@ class ConsonanceTask(luigi.Task):
 
 "bam_files": [
         '''
-            new_filename = self.submitter_sample_id + '.sortedByCoord.md.bam'
+            new_filename = output_base_name + '.sortedByCoord.md.bam'
             json_str += '''
     {
       "class": "File",
