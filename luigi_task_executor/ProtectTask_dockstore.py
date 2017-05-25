@@ -267,52 +267,53 @@ class DockstoreTask(luigi.Task):
 
 class ProtectCoordinator(luigi.Task):
 
-    #TODO : check parameters required for protect pipeline. (looks ok)
-
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_client_path = luigi.Parameter(default='../ucsc-storage-client')
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
-    image_descriptor = luigi.Parameter("must be defined") 
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
+    image_descriptor = luigi.Parameter("must be defined")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14")
     tmp_dir = luigi.Parameter(default='/datastore')
-    max_jobs = luigi.Parameter(default='1')
+    max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
     process_sample_uuid = luigi.Parameter(default = "")
 
-#    touch_file_path_prefix = os.path.join("s3:/", "cgl-core-analysis-run-touch-files", "consonance-jobs", "RNASeq_3_1_x_Coordinator", "3_1_3")
-    touch_file_path_prefix = "cgl-core-analysis-run-touch-files/consonance-jobs/Protect/1_0_1"
+    workflow_version = luigi.Parameter(default="3.2.1-1")
+    touch_file_bucket = luigi.Parameter(default="must be input")
+
+    vm_region = luigi.Parameter(default='us-east-1')
 
     #Consonance will not be called in test mode
-    test_mode = luigi.BooleanParameter(default = False)
+    test_mode = luigi.BoolParameter(default = False)
+
+    #in order to test using locally stored data
     test_mode_json_path = luigi.Parameter(default = "")
 
 
     def requires(self):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
+
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
-        print(str("https://"+self.redwood_host+":8444/entities?page=0"))
+        print(str("metadata."+self.redwood_host+"/entities?page=0"))
 
 #hack to get around none self signed certificates
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0"), context=ctx).read()
- 
-#        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0")).read()
+        json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
+
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
         for i in range(0, metadata_struct["totalPages"]):
             print("** CURRENT METADATA TOTAL PAGES: "+str(i))
-            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i)), context=ctx).read()
-#            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i))).read()
+            json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page="+str(i)), context=ctx).read()
             metadata_struct = json.loads(json_str)
             for file_hash in metadata_struct["content"]:
                 self.bundle_uuid_filename_to_file_uuid[file_hash["gnosId"]+"_"+file_hash["fileName"]] = file_hash["id"]
 
         # now query elasticsearch
+        print("setting up elastic search Elasticsearch([\"http:\/\/"+self.es_index_host+":"+self.es_index_port+"]")
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
@@ -320,6 +321,7 @@ class ProtectCoordinator(luigi.Task):
         listOfJobs = []
 
         if not self.test_mode or not self.test_mode_json_path:
+            #todo - double check this
             res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_protect_workflow_2_3_x" : "false"}},{"term" : {"flags.tumor_protect_workflow_2_3_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
             print("Got %d Hits:" % res['hits']['total'])
