@@ -45,6 +45,8 @@ class ConsonanceTask(luigi.Task):
     workflow_type = luigi.Parameter(default="protect_immunology")
     image_descriptor = luigi.Parameter("must be defined")
  
+    #so these aren't actually optional, but i can hardcode a path as default
+    # TODO : UPDATE ALL THIS STUFF TO REFLECT WHAT WE'LL BE USING (new protect args)
     genome_fasta = luigi.Parameter(default="")
     genome_fai = luigi.Parameter(default="")
     genome_dict = luigi.Parameter(default="")
@@ -60,6 +62,7 @@ class ConsonanceTask(luigi.Task):
     mhci = luigi.Parameter(default="")
     mhcii = luigi.Parameter(default="")
     mhc_pathway_assessment = luigi.Parameter(default="")
+    ### TODO ABOVE###
 
     tumor_dna = luigi.Parameter(default="")
     if tumor_dna:
@@ -99,9 +102,7 @@ class ConsonanceTask(luigi.Task):
     touch_file_path = luigi.Parameter(default='must input touch file path')
 
     #Consonance will not be called in test mode
-    test_mode = luigi.BooleanParameter(default = False)
-    test_mode_json_path = luigi.Parameter(default = "")
-
+    test_mode = luigi.BoolParameter(default = False)
 
     def run(self):
         print("\n\n\n** TASK RUN **")
@@ -295,14 +296,10 @@ class ProtectCoordinator(luigi.Task):
     workflow_version = luigi.Parameter(default="3.2.1-1")
     touch_file_bucket = luigi.Parameter(default="must be input")
 
-    vm_region = luigi.Parameter(default='us-east-1')
+    vm_region = luigi.Parameter(default='us-east-2')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
-
-    #in order to test using locally stored data
-    test_mode_json_path = luigi.Parameter(default = "")
-
 
     def requires(self):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
@@ -422,20 +419,6 @@ class ProtectCoordinator(luigi.Task):
                                            + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
 
 
-                            paired_files = []
-                            paired_file_uuids = []
-                            paired_bundle_uuids = []
-
-                            single_files = []
-                            single_file_uuids = []
-                            single_bundle_uuids = []
-
-                            tar_files = []
-                            tar_file_uuids = []
-                            tar_bundle_uuids = []
-
-                            parent_uuids = {}
-
                             for file in analysis["workflow_outputs"]:
                                 print("file type:"+file["file_type"])
                                 print("file name:"+file["file_path"])
@@ -464,57 +447,14 @@ class ProtectCoordinator(luigi.Task):
                                     tar_bundle_uuids.append(analysis["bundle_uuid"])
                                     parent_uuids[sample["sample_uuid"]] = True
 
-                            if len(listOfJobs) < int(self.max_jobs) and (len(paired_files) + len(tar_files) + len(single_files)) > 0:
-
-                                if len(tar_files) > 0 and (len(paired_files) > 0 or len(single_files) > 0):
-                                    print(('\n\nWARNING: mix of tar files and fastq(.gz) files submitted for' 
-                                                        ' input for one sample! This is probably an error!'), file=sys.stderr)
-                                    print('WARNING: files were\n paired {}\n tar: {}\n single:{}'.format(', '.join(map(str, paired_files)),
-                                                                                                          ', '.join(map(str, tar_files)),
-                                                                                                          ', '.join(map(str, single_files))), file=sys.stderr)
-                                    print('WARNING: sample uuid:{}'.format(parent_uuids.keys()[0]), file=sys.stderr)
-                                    print('WARNING: Skipping this job!\n\n', file=sys.stderr)
-                                    continue
-
-                                elif len(paired_files) > 0 and len(single_files) > 0:
-                                    print('\n\nWARNING: mix of single and paired fastq(.gz) files submitted for'
-                                                   ' input for one sample! This is probably an error!', file=sys.stderr)
-                                    print('WARNING: files were\n paired {}\n single:{}'.format(', '.join(map(str, paired_files)),
-                                                                                               ', '.join(map(str, single_files))), file=sys.stderr)
-                                    print('WARNING: sample uuid:{}\n'.format(parent_uuids.keys()[0]), file=sys.stderr)
-                                    print('WARNING: Skipping this job!\n\n', file=sys.stderr)
-                                    continue
- 
-                                elif len(tar_files) > 1:
-                                    print('\n\nWARNING: More than one tar file submitted for'
-                                                   ' input for one sample! This is probably an error!', file=sys.stderr)
-                                    print('WARNING: files were\n tar: %s'.format(', '.join(map(str, tar_files))), file=sys.stderr)
-                                    print('WARNING: sample uuid:%s'.format(parent_uuids.keys()[0]), file=sys.stderr)
-                                    print('WARNING: Skipping this job!\n\n', file=sys.stderr)
-                                    continue 
-
-                                elif len(paired_files) % 2 != 0:
-                                    print('\n\nWARNING: Odd number of paired files submitted for'
-                                                   ' input for one sample! This is probably an error!', file=sys.stderr)
-                                    print('WARNING: files were\n paired: %s'.format(', '.join(map(str, paired_files))), file=sys.stderr)
-                                    print('WARNING: sample uuid:%s'.format(parent_uuids.keys()[0]), file=sys.stderr)
-                                    print('WARNING: Skipping this job!\n\n', file=sys.stderr)
-                                    continue 
-
-                                else:
-                                   print("will run report for {} and {} and {}".format(', '.join(map(str, paired_files)), 
-                                                                                       ', '.join(map(str, tar_files)), 
-                                                                                       ', '.join(map(str, single_files))))
-                                   print("total of {} files in this {} job; job {} of {}".format(str(len(paired_files) + (len(tar_files) + len(single_files))), 
-                                                                                            hit["_source"]["program"], str(len(listOfJobs)+1), str(self.max_jobs)))
-                                   listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, \
-                                        image_descriptor=self.image_descriptor, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
-                                        parent_uuids = parent_uuids.keys(), \
-                                        single_filenames=single_files, single_file_uuids = single_file_uuids, single_bundle_uuids = single_bundle_uuids, \
-                                        paired_filenames=paired_files, paired_file_uuids = paired_file_uuids, paired_bundle_uuids = paired_bundle_uuids, \
-                                        tar_filenames=tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, \
-                                        tmp_dir=self.tmp_dir, submitter_sample_id = submitter_sample_id, meta_data_json = meta_data_json, \
-                                        touch_file_path = touch_file_path, test_mode=self.test_mode, test_mode_json_path=self.test_mode_json_path))
+                               listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, \
+                                    image_descriptor=self.image_descriptor, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
+                                    parent_uuids = parent_uuids.keys(), \
+                                    single_filenames=single_files, single_file_uuids = single_file_uuids, single_bundle_uuids = single_bundle_uuids, \
+                                    paired_filenames=paired_files, paired_file_uuids = paired_file_uuids, paired_bundle_uuids = paired_bundle_uuids, \
+                                    tar_filenames=tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, \
+                                    tmp_dir=self.tmp_dir, submitter_sample_id = submitter_sample_id, meta_data_json = meta_data_json, \
+                                    touch_file_path = touch_file_path, test_mode=self.test_mode))
 
             
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
