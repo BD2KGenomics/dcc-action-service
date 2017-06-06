@@ -60,7 +60,25 @@ class DockstoreTask(luigi.Task):
 
 
     def run(self):
-        pass
+        #cmd is:
+        #dockstore workflow launch --entry BD2KGenomics/dockstore_workflow_cnv:master --json Dockstore.json
+
+        #todo - create json here. 
+
+        cmd = ["dockstore", "workflow", "lauch", "--entry", "BD2KGenomics/dockstore_workflow_cnv:master", "--json", "todo"]
+        cmd_str = ' '.join(cmd)
+        if self.test_mode == False:
+            try:
+                consonance_output_json = subprocess.check_output(cmd)
+            except subprocess.CalledProcessError as e:
+                return_code = e.returncode
+                sys.exit(return_code)
+            except Exception as e:
+                return_code = 1
+                sys.exit(return_code)
+        else:
+            print("test mode")
+
 
     def output(self):
         pass
@@ -70,19 +88,21 @@ class CNVCoordinator(luigi.Task):
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_client_path = luigi.Parameter(default='/ucsc-storage-client')
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
-    image_descriptor = luigi.Parameter("must be defined") 
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
+    image_descriptor = luigi.Parameter("must be defined")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14")
     tmp_dir = luigi.Parameter(default='/datastore')
-    max_jobs = luigi.Parameter(default='1')
+    max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
     process_sample_uuid = luigi.Parameter(default = "")
 
-    #TODO - verify touch file path
-    touch_file_path_prefix = "cgl-core-analysis-run-touch-files/consonance-jobs/CNV/1_0_1"
+    workflow_version = luigi.Parameter(default="1.0")
+    touch_file_bucket = luigi.Parameter(default="must be input")
 
-    test_mode = luigi.BooleanParameter(default = False)
+    vm_region = luigi.Parameter(default='us-west-2')
+
+    #Consonance will not be called in test mode
+    test_mode = luigi.BoolParameter(default = False)
 
     def requires(self):
         print("\n\n\n\n ** COORDINATOR REQUIRES ** ")
@@ -93,26 +113,24 @@ class CNVCoordinator(luigi.Task):
         ctx.verify_mode = ssl.CERT_NONE
 
         print("Opening redwood host: "+str("https://"+self.redwood_host+":8444/entities?page=0"))
-        json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page=0"), context=ctx).read()
- 
+        json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
+
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
         for i in range(0, metadata_struct["totalPages"]):
             print("** CURRENT METADATA TOTAL PAGES: "+str(i))
-            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i)), context=ctx).read()
-#            json_str = urlopen(str("https://"+self.redwood_host+":8444/entities?page="+str(i))).read()
+            json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page="+str(i)), context=ctx).read()
             metadata_struct = json.loads(json_str)
             for file_hash in metadata_struct["content"]:
                 self.bundle_uuid_filename_to_file_uuid[file_hash["gnosId"]+"_"+file_hash["fileName"]] = file_hash["id"]
 
         #open elasticsearch index
-        es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
+        es = Elasticsearch(['http://'+self.es_index_host+":"+self.es_index_port])
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_cnv_workflow" : "false"}},{"term" : {"flags.tumor_cnv_workflow" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         listOfJobs = []
 
         #search es index for metadata telling us the cnv workflow has not yet been run.
-        #TODO: switch rna-seq with cnv - temp for testing
-        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_cgl_workflow_3_0_x" : "false"}},{"term" : {"flags.tumor_rna_seq_cgl_workflow_3_0_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         print("Got %d Hits:" % res['hits']['total'])
 
@@ -142,6 +160,10 @@ class CNVCoordinator(luigi.Task):
                     continue
 
                 touch_file_path = "" # TODO - or should it be done in dockstoretask?
+
+                #centromeres = some hardcoded path in redwood
+                #targets = some hardcoded path in redwood
+                #geno_fa_gz = some harcoded path...
 
                 for normal_sample in normal_samples:
                     for tumor_sample in tumor_samples: #run every normal sample vs tumor samples.
