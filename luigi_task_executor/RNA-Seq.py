@@ -484,7 +484,7 @@ class RNASeqCoordinator(luigi.Task):
         # now query elasticsearch
         print("setting up elastic search Elasticsearch([\"http:\/\/"+self.es_index_host+":"+self.es_index_port+"]")
         es = Elasticsearch(['http://'+self.es_index_host+":"+self.es_index_port])
-        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_cgl_workflow_3_0_x" : "false"}},{"term" : {"flags.tumor_rna_seq_cgl_workflow_3_0_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_rna_seq_cgl_workflow_3_2_x" : "false"}},{"term" : {"flags.tumor_rna_seq_cgl_workflow_3_2_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
 
         listOfJobs = []
 
@@ -548,10 +548,10 @@ class RNASeqCoordinator(luigi.Task):
                                     +" tumor RNA Seq quant:" + str(hit["_source"]["flags"]["tumor_rna_seq_quantification"]))
                         print("Specimen type:" + specimen["submitter_specimen_type"] + " Experimental design:"
                                     + str(specimen["submitter_experimental_design"] + " Analysis bundle uuid:"+analysis["bundle_uuid"]))
-                        print("Normal RNASeq 3.0.x flag:" + str(hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_0_x"])
-                                    +" Tumor RNASeq 3.0.x flag:" + str(hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_0_x"]))
-                        print("Normal missing items RNASeq 3.0.x:" + str(sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_0_x"]))
-                        print("Tumor missing items RNASeq 3.0.x:" + str(sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_0_x"]))
+                        print("Normal RNASeq 3.0.x flag:" + str(hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_2_x"])
+                                    +" Tumor RNASeq 3.0.x flag:" + str(hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_2_x"]))
+                        print("Normal missing items RNASeq 3.0.x:" + str(sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_2_x"]))
+                        print("Tumor missing items RNASeq 3.0.x:" + str(sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_2_x"]))
                         print("work flow outputs:")
                         for output in analysis["workflow_outputs"]:
                             print(output)
@@ -569,30 +569,32 @@ class RNASeqCoordinator(luigi.Task):
                                     print("len of rna_seq outputs is:"+str(rna_seq_outputs_len))
 
                         if ( (analysis["analysis_type"] == "sequence_upload" and
-                              ((hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_0_x"] == False and
+                              ((hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_2_x"] == False and
                                    (rna_seq_outputs_len == 0 or (rna_seq_workflow_version != self.workflow_version)) and
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_0_x"] and
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_2_x"] and
                                    re.match("^Normal - ", specimen["submitter_specimen_type"]) and
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"]))) or
-                               (hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_0_x"] == False and
+                               (hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_2_x"] == False and
                                    (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version) and
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_0_x"] and
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_2_x"] and
                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]) and
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"])) ))) or
 
                              #if the workload has already been run but we have no
                              #output from the workload run it again
                              (analysis["analysis_type"] == "sequence_upload" and \
-                              ((hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_0_x"] == True and \
-                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_0_x"] or \
-                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["normal_rna_seq_cgl_workflow_3_0_x"] and
-                                                                                         (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
+                              ((hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_2_x"] == True and \
+                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_2_x"] or \
+                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["normal_rna_seq_cgl_workflow_3_2_x"] and
+                                                                                         rna_seq_outputs_len == 0 ) and \
+#                                       (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
                                    re.match("^Normal - ", specimen["submitter_specimen_type"]) and \
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"])) ) or \
-                               (hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_0_x"] == True and \
-                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_0_x"] or \
-                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["tumor_rna_seq_cgl_workflow_3_0_x"] and
-                                                                                         (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
+                               (hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_2_x"] == True and \
+                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_2_x"] or \
+                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["tumor_rna_seq_cgl_workflow_3_2_x"] and
+                                                                                         rna_seq_outputs_len == 0 ) and \
+#                                       (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]) and \
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"])) ))) ):
 
