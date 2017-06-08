@@ -54,8 +54,7 @@ class DockstoreTask(luigi.Task):
     seqcap_file_uuid = luigi.Parameter("must be defined")
     seqcap_file_name = luigi.Parameter("must be defined")
 
-
-    test_mode = luigi.BooleanParameter(default=False)
+    test_mode = luigi.BoolParameter(default=False)
 
     target_tool_url = luigi.Parameter(default="https://github.com/BD2KGenomics/dockstore_workflow_cnv")
     target_tool_prefix = luigi.Parameter(default="https://dockstore.org/workflows/BD2KGenomics/dockstore_workflow_cnv")
@@ -64,32 +63,34 @@ class DockstoreTask(luigi.Task):
     image_descriptor = luigi.Parameter("must be defined")
 
     parent_uuids = luigi.Parameter("must be defined")
+    vm_region = luigi.Parameter(default="us-west-2")
 
     tmp_dir = luigi.Parameter(default='/datastore')
 
     meta_data_json = luigi.Parameter(default="must input metadata") 
-    meta_data = json.loads(meta_data_json)
     touch_file_path = luigi.Parameter(default='must input touch file path')
-
-    json_dict = {}
-
-    tum_path = "redwood://"+redwood_host+"/"+tumor_bundle_uuid+"/"+tumor_sample_uuid+"/"+tumor_sample_path
-    norm_path = "redwood://"+redwood_host+"/"+normal_bundle_uuid+"/"+normal_sample_uuid+"/"+normal_sample_path
-    cent_path = "redwood://"+redwood_host+"/"+hg38bed_bundle_uuid+"/"+hg38bed_file_uuid+"/"+hg38bed_file_name
-    targ_path = "redwood://"+redwood_host+"/"+seqcap_bundle_uuid+"/"+seqcap_file_uuid+"/"+seqcap_file_name
-    fagz_path = "redwood://"+redwood_host+"/"+hg38fa_bundle_uuid+"/"+hg38fa_file_uuid+"/"+hg38fa_file_name
-
-    json_dict["TUMOR_BAM"] = {"class" : "File", "path" : tum_path}
-    json_dict["NORMAL_BAM"] = {"class" : "File", "path" : norm_path}
-    json_dict["SAMPLE_ID"] = {"class" : "string", "string" : meta_data["submitter_specimen_id"]}
-    json_dict["CENTROMERES"] = {"class" : "File", "path" : cent_path}
-    json_dict["TARGETS"] = {"class" : "File", "path" : targ_path}
-    json_dict["GENO_FA_GZ"] = {"class" : "File", "path" : fagz_path}
-    json_dict["VARSCAN_OUTCNV"] = {"class" : "File", "path" : "/home/ubuntu/thomas_varscan_test_out"} #temp, TODO change
-    json_dict["ADTEX_OUTCNV"] = {"class" : "File", "path" : "/home/ubuntu/thomas_adtex_test_out"} #TODO
 
 
     def run(self):
+
+        meta_data = json.loads(self.meta_data_json)
+
+        json_dict = {}
+
+        tum_path = "redwood://"+self.redwood_host+"/"+self.tumor_bundle_uuid+"/"+self.tumor_sample_uuid+"/"+self.tumor_sample_path
+        norm_path = "redwood://"+self.redwood_host+"/"+self.normal_bundle_uuid+"/"+self.normal_sample_uuid+"/"+self.normal_sample_path
+        cent_path = "redwood://"+self.redwood_host+"/"+self.hg38bed_bundle_uuid+"/"+self.hg38bed_file_uuid+"/"+self.hg38bed_file_name
+        targ_path = "redwood://"+self.redwood_host+"/"+self.seqcap_bundle_uuid+"/"+self.seqcap_file_uuid+"/"+self.seqcap_file_name
+        fagz_path = "redwood://"+self.redwood_host+"/"+self.hg38fa_bundle_uuid+"/"+self.hg38fa_file_uuid+"/"+self.hg38fa_file_name
+
+        json_dict["TUMOR_BAM"] = {"class" : "File", "path" : tum_path}
+        json_dict["NORMAL_BAM"] = {"class" : "File", "path" : norm_path}
+        json_dict["SAMPLE_ID"] = {"class" : "string", "string" : meta_data["submitter_specimen_id"]}
+        json_dict["CENTROMERES"] = {"class" : "File", "path" : cent_path}
+        json_dict["TARGETS"] = {"class" : "File", "path" : targ_path}
+        json_dict["GENO_FA_GZ"] = {"class" : "File", "path" : fagz_path}
+        json_dict["VARSCAN_OUTCNV"] = {"class" : "File", "path" : "/home/ubuntu/thomas_varscan_test_out"} #temp, TODO change
+        json_dict["ADTEX_OUTCNV"] = {"class" : "File", "path" : "/home/ubuntu/thomas_adtex_test_out"} #TODO
         #cmd is:
         #dockstore workflow launch --entry BD2KGenomics/dockstore_workflow_cnv:master --json Dockstore.json
 
@@ -106,10 +107,10 @@ class DockstoreTask(luigi.Task):
             return_code = 1
             sys.exit(return_code)
 
-        output_base_name = self.meta_data["submitter_sample_id"]
+        output_base_name = meta_data["submitter_sample_id"]
 
         #todo - create json here. 
-        json_str = json.dumps(self.json_dict)
+        json_str = json.dumps(json_dict)
         print("THE JSON: "+json_str)
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
@@ -132,7 +133,7 @@ class DockstoreTask(luigi.Task):
             "vm_instance_cores": 36,
             "vm_instance_mem_gb": 60,
             "output_metadata_json": "/tmp/final_metadata.json"
-        }''' % (self.meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
+        }''' % (meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
 
 
