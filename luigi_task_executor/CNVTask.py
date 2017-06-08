@@ -172,7 +172,7 @@ class CNVCoordinator(luigi.Task):
     image_descriptor = luigi.Parameter("must be defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14")
     tmp_dir = luigi.Parameter(default='/datastore')
-    max_jobs = luigi.Parameter(default='-1')
+    max_jobs = luigi.Parameter(default='1')
     bundle_uuid_filename_to_file_uuid = {}
     process_sample_uuid = luigi.Parameter(default = "")
 
@@ -217,10 +217,10 @@ class CNVCoordinator(luigi.Task):
         grouped_by_donor = {}
         i = 0
         for hit in res['hits']['hits']:
-            #print("New hit starts here:")
-            #print(hit)
-            #print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
-            #print("Got %d specimens:" % len(hit["_source"]["specimen"]))
+            print("New hit starts here:")
+            print(hit)
+            print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
+            print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
             #get all reference file jsons
             hg38bed_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=hg38.centromeres.bed"), context=ctx).read()
@@ -353,6 +353,10 @@ class CNVCoordinator(luigi.Task):
 
     def output(self):
         print("\n\n****COORDINATOR OUTPUT****\n\n")
+
+    def fileToUUID(self, input, bundle_uuid):
+        return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]
+
 
 if __name__ == '__main__':
     luigi.run()
