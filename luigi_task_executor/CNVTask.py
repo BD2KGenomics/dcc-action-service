@@ -332,7 +332,7 @@ class CNVCoordinator(luigi.Task):
                                                         hg38bed_file_uuid=hg38bed_file_uuid, hg38bed_file_name=hg38bed_file_name, hg38fa_bundle_uuid=hg38fa_bundle_uuid,
                                                         hg38fa_file_uuid=hg38fa_file_uuid, hg38fa_file_name=hg38fa_file_name, seqcap_bundle_uuid=seqcap_bundle_uuid,
                                                         seqcap_file_uuid=seqcap_file_uuid, seqcap_file_name=seqcap_file_name, image_descriptor=self.image_descriptor,
-                                                        target_tool_url=self.target_tool_url, touch_file_path=touch_file_path, tmp_dir=self.tmp_dir, test_mode=self.test_mode))
+                                                        touch_file_path=touch_file_path, tmp_dir=self.tmp_dir, test_mode=self.test_mode))
 
 
                             #what is this for?
