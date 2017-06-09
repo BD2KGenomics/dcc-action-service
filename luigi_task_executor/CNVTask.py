@@ -242,63 +242,66 @@ class CNVCoordinator(luigi.Task):
             seqcap_file_uuid = seqcap_data["content"][0]["id"]
             seqcap_file_name = seqcap_data["content"][0]["fileName"]
 
+            cnflag = False
             for specimen in hit["_source"]["specimen"]:
-                cnflag = False
                 for sample in specimen["samples"]:
                     for analysis in sample["analysis"]:
                         if analysis["analysis_type"] == "cnv_variant_calling":
                             cnflag = True
 
-                if cnflag:
-                    workflow_version_dir = self.workflow_version.replace('.', '_')
-                    touch_file_path_prefix = self.touch_file_bucket+"/consonance-jobs/cnv/" + workflow_version_dir
-                    touch_file_path = touch_file_path_prefix+"/"+hit["_source"]["center_name"]+"_"+hit["_source"]["program"] \
-                                                            +"_"+hit["_source"]["project"]+"_"+hit["_source"]["submitter_donor_id"] \
-                                                            +"_"+specimen["submitter_specimen_id"]
+            if cnflag:
+                specimen = hit["_source"]["specimen"][0]
 
-                    submitter_sample_id = specimen["samples"][0]["submitter_sample_id"]
+                workflow_version_dir = self.workflow_version.replace('.', '_')
+                touch_file_path_prefix = self.touch_file_bucket+"/consonance-jobs/cnv/" + workflow_version_dir
+                touch_file_path = touch_file_path_prefix+"/"+hit["_source"]["center_name"]+"_"+hit["_source"]["program"] \
+                                                        +"_"+hit["_source"]["project"]+"_"+hit["_source"]["submitter_donor_id"] \
+                                                        +"_"+specimen["submitter_specimen_id"]
 
-                    meta_data = {}
-                    meta_data["program"] = hit["_source"]["program"]
-                    meta_data["project"] = hit["_source"]["project"]
-                    meta_data["center_name"] = hit["_source"]["center_name"]
-                    meta_data["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
-                    meta_data["donor_uuid"] = hit["_source"]["donor_uuid"]
-                    if "submitter_donor_primary_site" in hit["_source"]:
-                        meta_data["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
-                    else:
-                        meta_data["submitter_donor_primary_site"] = "not provided"
-                    meta_data["submitter_specimen_id"] = specimen["submitter_specimen_id"]
-                    meta_data["specimen_uuid"] = specimen["specimen_uuid"]
-                    meta_data["submitter_specimen_type"] = specimen["submitter_specimen_type"]
-                    meta_data["submitter_experimental_design"] = specimen["submitter_experimental_design"]
-                    meta_data["submitter_sample_id"] = specimen["samples"][0]["submitter_sample_id"]
-                    meta_data["sample_uuid"] = specimen["samples"][0]["sample_uuid"]
-                    meta_data["analysis_type"] = "cnv_variant_calling"
-                    meta_data["workflow_name"] = "quay.io/ucsc_cgl/cnv-workflow"#todo
-                    meta_data["workflow_version"] = self.workflow_version
+                submitter_sample_id = specimen["samples"][0]["submitter_sample_id"]
 
-                    meta_data_json = json.dumps(meta_data)
-                    #print("meta data:")
-                    #print(meta_data_json)
+                meta_data = {}
+                meta_data["program"] = hit["_source"]["program"]
+                meta_data["project"] = hit["_source"]["project"]
+                meta_data["center_name"] = hit["_source"]["center_name"]
+                meta_data["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
+                meta_data["donor_uuid"] = hit["_source"]["donor_uuid"]
+                if "submitter_donor_primary_site" in hit["_source"]:
+                    meta_data["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
+                else:
+                    meta_data["submitter_donor_primary_site"] = "not provided"
+                meta_data["submitter_specimen_id"] = specimen["submitter_specimen_id"]
+                meta_data["specimen_uuid"] = specimen["specimen_uuid"]
+                meta_data["submitter_specimen_type"] = specimen["submitter_specimen_type"]
+                meta_data["submitter_experimental_design"] = specimen["submitter_experimental_design"]
+                meta_data["submitter_sample_id"] = specimen["samples"][0]["submitter_sample_id"]
+                meta_data["sample_uuid"] = specimen["samples"][0]["sample_uuid"]
+                meta_data["analysis_type"] = "cnv_variant_calling"
+                meta_data["workflow_name"] = "quay.io/ucsc_cgl/cnv-workflow"#todo
+                meta_data["workflow_version"] = self.workflow_version
 
-
-                    #print analysis
-                    print("HIT!!!! " + analysis["analysis_type"] + " " + str(hit["_source"]["flags"]["normal_rna_seq_quantification"])
-                                   + " " + str(hit["_source"]["flags"]["tumor_rna_seq_quantification"]) + " "
-                                   + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
+                meta_data_json = json.dumps(meta_data)
+                #print("meta data:")
+                #print(meta_data_json)
 
 
-                    normal_files = []
-                    normal_file_uuids = []
-                    normal_bundle_uuids = []
+                #print analysis
+                print("HIT!!!! " + analysis["analysis_type"] + " " + str(hit["_source"]["flags"]["normal_rna_seq_quantification"])
+                               + " " + str(hit["_source"]["flags"]["tumor_rna_seq_quantification"]) + " "
+                               + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
 
-                    tumor_files = []
-                    tumor_file_uuids = []
-                    tumor_bundle_uuids = []
 
-                    parent_uuids = {}
-                    
+                normal_files = []
+                normal_file_uuids = []
+                normal_bundle_uuids = []
+
+                tumor_files = []
+                tumor_file_uuids = []
+                tumor_bundle_uuids = []
+
+                parent_uuids = {}
+
+                for specimen in hit["_source"]["specimen"]:
                     for sample in specimen["samples"]:
                         for analysis in sample["analysis"]:
 
@@ -318,16 +321,19 @@ class CNVCoordinator(luigi.Task):
                                         tumor_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
                                         tumor_bundle_uuids.append(analysis["bundle_uuid"])
 
-                    for i in range(0, len(normal_files)):
-                        for i in range(0, len(tumor_files)):
-                            listOfJobs.append(DockstoreTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, redwood_client_path=self.redwood_client_path,
-                                                            dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, meta_data_json=meta_data_json, normal_sample_path=normal_files[i],
-                                                            normal_sample_uuid=normal_file_uuids[i], normal_bundle_uuid=normal_bundle_uuids[i], tumor_sample_path=tumor_files[i], parent_uuids = parent_uuids.keys(),
-                                                            tumor_sample_uuid=tumor_file_uuids[i], tumor_bundle_uuid=tumor_bundle_uuids[i], hg38bed_bundle_uuid=hg38bed_bundle_uuid,
-                                                            hg38bed_file_uuid=hg38bed_file_uuid, hg38bed_file_name=hg38bed_file_name, hg38fa_bundle_uuid=hg38fa_bundle_uuid,
-                                                            hg38fa_file_uuid=hg38fa_file_uuid, hg38fa_file_name=hg38fa_file_name, seqcap_bundle_uuid=seqcap_bundle_uuid,
-                                                            seqcap_file_uuid=seqcap_file_uuid, seqcap_file_name=seqcap_file_name, image_descriptor=self.image_descriptor,
-                                                            target_tool_url=self.target_tool_url, touch_file_path=touch_file_path, tmp_dir=self.tmp_dir, test_mode=self.test_mode))
+                print("Normal files:", normal_files)
+                print("Tumor files:", tumor_files)
+
+                for i in range(0, len(normal_files)):
+                    for i in range(0, len(tumor_files)):
+                        listOfJobs.append(DockstoreTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, redwood_client_path=self.redwood_client_path,
+                                                        dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, meta_data_json=meta_data_json, normal_sample_path=normal_files[i],
+                                                        normal_sample_uuid=normal_file_uuids[i], normal_bundle_uuid=normal_bundle_uuids[i], tumor_sample_path=tumor_files[i], parent_uuids = parent_uuids.keys(),
+                                                        tumor_sample_uuid=tumor_file_uuids[i], tumor_bundle_uuid=tumor_bundle_uuids[i], hg38bed_bundle_uuid=hg38bed_bundle_uuid,
+                                                        hg38bed_file_uuid=hg38bed_file_uuid, hg38bed_file_name=hg38bed_file_name, hg38fa_bundle_uuid=hg38fa_bundle_uuid,
+                                                        hg38fa_file_uuid=hg38fa_file_uuid, hg38fa_file_name=hg38fa_file_name, seqcap_bundle_uuid=seqcap_bundle_uuid,
+                                                        seqcap_file_uuid=seqcap_file_uuid, seqcap_file_name=seqcap_file_name, image_descriptor=self.image_descriptor,
+                                                        target_tool_url=self.target_tool_url, touch_file_path=touch_file_path, tmp_dir=self.tmp_dir, test_mode=self.test_mode))
 
 
                             #what is this for?
