@@ -31,7 +31,6 @@ import boto
 class DockstoreTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_client_path = luigi.Parameter(default='/ucsc-storage-client')
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.8")
 
     normal_sample_path = luigi.Parameter("must be defined")
@@ -326,9 +325,9 @@ class CNVCoordinator(luigi.Task):
 
                 for i in range(0, len(normal_files)):
                     for i in range(0, len(tumor_files)):
-                        listOfJobs.append(DockstoreTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, redwood_client_path=self.redwood_client_path,
-                                                        dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, meta_data_json=meta_data_json, normal_sample_path=normal_files[i],
-                                                        normal_sample_uuid=normal_file_uuids[i], normal_bundle_uuid=normal_bundle_uuids[i], tumor_sample_path=tumor_files[i], parent_uuids = parent_uuids.keys(),
+                        listOfJobs.append(DockstoreTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool,
+                                                        meta_data_json=meta_data_json, normal_sample_path=normal_files[i], normal_sample_uuid=normal_file_uuids[i],
+                                                        normal_bundle_uuid=normal_bundle_uuids[i], tumor_sample_path=tumor_files[i], parent_uuids = parent_uuids.keys(),
                                                         tumor_sample_uuid=tumor_file_uuids[i], tumor_bundle_uuid=tumor_bundle_uuids[i], hg38bed_bundle_uuid=hg38bed_bundle_uuid,
                                                         hg38bed_file_uuid=hg38bed_file_uuid, hg38bed_file_name=hg38bed_file_name, hg38fa_bundle_uuid=hg38fa_bundle_uuid,
                                                         hg38fa_file_uuid=hg38fa_file_uuid, hg38fa_file_name=hg38fa_file_name, seqcap_bundle_uuid=seqcap_bundle_uuid,
