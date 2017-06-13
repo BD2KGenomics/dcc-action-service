@@ -502,7 +502,7 @@ class RNASeqCoordinator(luigi.Task):
             if(hit["_source"]["program"] == "Quake Brain scRNA-Seq"):
                 disable_cutadapt = 'true'
 
-            if(hit["_source"]["project"] == "CHR6"):
+            if(hit["_source"]["project"] == "CHR6" or hit["_source"]["project"] == 'CWL_patch-chr6'):
                 rsem_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=rsem_ref_chr6.tar.gz"), context=ctx).read()
                 star_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=starIndex_chr6.tar.gz"), context=ctx).read()
                 disable_cutadapt = 'true'
@@ -586,15 +586,13 @@ class RNASeqCoordinator(luigi.Task):
                               ((hit["_source"]["flags"]["normal_rna_seq_cgl_workflow_3_2_x"] == True and \
                                    (sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_rna_seq_cgl_workflow_3_2_x"] or \
                                    (sample["sample_uuid"] in hit["_source"]["present_items"]["normal_rna_seq_cgl_workflow_3_2_x"] and
-                                                                                         rna_seq_outputs_len == 0 ) and \
-#                                       (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
+                                                                                         rna_seq_outputs_len == 0 )) and \
                                    re.match("^Normal - ", specimen["submitter_specimen_type"]) and \
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"])) ) or \
                                (hit["_source"]["flags"]["tumor_rna_seq_cgl_workflow_3_2_x"] == True and \
                                    (sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_rna_seq_cgl_workflow_3_2_x"] or \
                                    (sample["sample_uuid"] in hit["_source"]["present_items"]["tumor_rna_seq_cgl_workflow_3_2_x"] and
-                                                                                         rna_seq_outputs_len == 0 ) and \
-#                                       (rna_seq_outputs_len == 0 or rna_seq_workflow_version != self.workflow_version))) and \
+                                                                                         rna_seq_outputs_len == 0 )) and \
                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]) and \
                                    (re.match("^RNA-Seq$", specimen["submitter_experimental_design"]) or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"])) ))) ):
 
