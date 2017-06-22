@@ -137,7 +137,7 @@ class DockstoreTask(luigi.Task):
 
 
 
-        cmd = ["dockstore", "workflow", "lauch", "--entry", "BD2KGenomics/dockstore_workflow_cnv:master", "--json", self.save_dockstore_json_local().path]
+        cmd = ["dockstore", "workflow", "launch", "--entry", "BD2KGenomics/dockstore_workflow_cnv:master", "--json", self.save_dockstore_json_local().path]
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
             try:
