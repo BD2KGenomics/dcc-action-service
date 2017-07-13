@@ -15,6 +15,8 @@ from uuid import uuid5
 import os
 import sys
 import copy
+from collections import defaultdict
+
 
 from elasticsearch import Elasticsearch
 
@@ -41,10 +43,13 @@ class ConsonanceTask(luigi.Task):
     target_tool_prefix = luigi.Parameter(default="quay.io/ucsc_cgl/protect")
 
 
-    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/ucsc_cgl/rnaseq-cgl-pipeline")
-    workflow_type = luigi.Parameter(default="protect_immunology")
+    target_tool_url = luigi.Parameter(default="https://dockstore.org/containers/quay.io/ucsc_cgl/protect")
+    workflow_type = luigi.Parameter(default="immuno_target_pipelines")
     image_descriptor = luigi.Parameter("must be defined")
- 
+
+    vm_region = luigi.Parameter(default='us-west-2')
+
+    ''' 
     #so these aren't actually optional, but i can hardcode a path as default
     # TODO : UPDATE ALL THIS STUFF TO REFLECT WHAT WE'LL BE USING (new protect args)
     genome_fasta = luigi.Parameter(default="")
@@ -67,9 +72,6 @@ class ConsonanceTask(luigi.Task):
     tumor_dna = luigi.Parameter(default="")
     if tumor_dna:
         json_dict["tumor_dna"] = {"class" : "File", "path" : tumor_dna}
-    tumor_rna = luigi.Parameter(default="")
-    if tumor_rna:
-        json_dict["tumor_rna"] = {"class" : "File", "path" : tumor_rna}
     normal_dna = luigi.Parameter(default="")
     if normal_dna:
         json_dict["normal_dna"] = {"class" : "File", "path" : normal_dna}
@@ -83,6 +85,24 @@ class ConsonanceTask(luigi.Task):
     if normal_dna2:
         json_dict["normal_dna2"] = {"class" : "File", "path" : normal_dna2}
 
+    tumor_rna = luigi.Parameter(default="")
+    if tumor_rna:
+        json_dict["tumor_rna"] = {"class" : "File", "path" : tumor_rna}
+    tumor_rna2 = luigi.Parameter(default="")
+    if tumor_rna2:
+        json_dict["tumor_rna2"] = {"class" : "File", "path" : tumor_rna2}
+
+    json_dict["sample-name"] = "protect-sample" #TODO what should this be??????????
+
+    json_dict["tumor-type"] = "STAD"
+
+    json_dict["work-mount"] : "/datastore/"
+
+    json_dict["reference_build"] = "hg19"
+
+    json_dict["mail_to"] = "jqpublic@myschool.edu"
+
+
     star_path = luigi.Parameter(default="")
     if star_path:
         json_dict["star_path"] = {"class" : "File", "path" : star_path}
@@ -92,13 +112,17 @@ class ConsonanceTask(luigi.Task):
     rsem_path = luigi.Parameter(default="")
     if rsem_path:
         json_dict["rsem_path"] = {"class" : "File", "path" : rsem_path}
+    '''
 
     tmp_dir = luigi.Parameter(default='/datastore') #equivalent of work mount
     sse_key = luigi.Parameter(default="")
-    sse_key_is_master = luigi.Parameter(default="False")
+    sse_key_is_master = luigi.BoolParameter(default= False)
 
-    submitter_sample_id = luigi.Parameter(default='must input submitter sample id')
-    meta_data_json = luigi.Parameter(default="must input metadata")
+    sample_name = luigi.Parameter(default='must input sample name')
+    #output_filename = sample_name
+    #submitter_sample_id = luigi.Parameter(default='must input submitter sample id')
+    protect_job_json = luigi.Parameter(default="must input metadata")
+
     touch_file_path = luigi.Parameter(default='must input touch file path')
 
     #Consonance will not be called in test mode
@@ -132,26 +156,45 @@ class ConsonanceTask(luigi.Task):
             return_code = 1
             sys.exit(return_code)
 
-        meta_data = json.loads(self.meta_data_json)
-        output_base_name = meta_data["submitter_sample_id"]
+        protect_job = json.loads(self.protect_job_json)
+        output_base_name = protect_job["sample_name"]
+       
+        json_dict = defaultdict() 
+        if 'tumor_dna' in protect_job['tumor_dna'].keys():
+            json_dict["tumor_dna"] = protect_job['tumor_dna']
+        else:
+            print("ERROR: no tumor dna file!", file=sys.stderr)
+        json_dict["tumor_dna2"] = protect_job['tumor_dna2']
+        json_dict["normal_dna"] = protect_job['normal_dna']
+        json_dict["normal_dna2"] = protect_job['normal_dna2']
+        json_dict["tumor_rna"] = protect_job['tumor_rna']
+        json_dict["tumor_rna2"] = protect_job['tumor_rna2']
 
+        json_dict["sample-name"] = protect_job['sample_name']
+        json_dict["tumor-type"] = "STAD"
+        json_dict["work-mount"] = "/datastore/"
+        json_dict["reference_build"] = "hg19"
+        json_dict["mail_to"] = "jqpublic@myschool.edu"
+
+        print("json dict:")
+        print(dict(json_dict))
 
         print("** MAKE JSON FOR WORKER **")
-        # create a json for RNA-Seq which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
+        # create a json for for the pipeline which will be executed by the dockstore-tool-running-dockstore-tool and passed as base64encoded
         # will need to encode the JSON above in this: https://docs.python.org/2/library/base64.html
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
         # TODO: this is tied to the requirements of the tool being targeted
-
-        json_str = json.dumps(self.json_dict)
+        
+        json_str = json.dumps(json_dict)
         print("THE JSON: "+json_str)
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print("** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **")
 
-        # create a json for dockstoreRunningDockstoreTool, embed the RNA-Seq JSON as a param
+        # create a json for dockstoreRunningDockstoreTool, embed the  JSON as a param
 # below used to be a list of parent UUIDs; which is correct????
 #            "parent_uuids": "[%s]",
-        parent_uuids = ','.join(map("{0}".format, self.parent_uuids))
+        parent_uuids = ','.join(map("{0}".format, protect_job['parent_uuids']))
 
         print("parent uuids:%s" % parent_uuids)
 
@@ -160,23 +203,40 @@ class ConsonanceTask(luigi.Task):
 
         target_tool= self.target_tool_prefix + ":" + self.workflow_version
 
-        dockstore_json_str = '''{
-            "program_name": "%s",
-            "json_encoded": "%s",
-            "docker_uri": "%s",
-            "dockstore_url": "%s",
-            "redwood_token": "%s",
-            "redwood_host": "%s",
-            "parent_uuids": "%s",
-            "workflow_type": "%s",
-            "tmpdir": "%s",
-            "vm_instance_type": "c4.8xlarge",
-            "vm_region": "%s",
-            "vm_location": "aws",
-            "vm_instance_cores": 36,
-            "vm_instance_mem_gb": 60,
-            "output_metadata_json": "/tmp/final_metadata.json"
-        }''' % (meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
+        dockstore_json_str = {}
+        dockstore_json_str["program_name"] = protect_job["program"].replace(' ','_')
+        dockstore_json_str["json_encoded"] = base64_json_str
+        dockstore_json_str["docker_uri"] = target_tool
+        dockstore_json_str["dockstore_url" ] = self.target_tool_url
+        dockstore_json_str["redwood_token" ] = self.redwood_token
+        dockstore_json_str["redwood_host"] = self.redwood_host
+        dockstore_json_str["parent_uuids"] = parent_uuids
+        dockstore_json_str["workflow_type"] = self.workflow_type
+        dockstore_json_str["tmpdir"] = self.tmp_dir
+        dockstore_json_str["vm_instance_type"] = "c4.8xlarge"
+        dockstore_json_str["vm_region"] = self.vm_region
+        dockstore_json_str["vm_location"] = "aws"
+        dockstore_json_str["vm_instance_cores"] = 36
+        dockstore_json_str["vm_instance_mem_gb"] = 60
+        dockstore_json_str["output_metadata_json"] = "/tmp/final_metadata.json"
+
+#        dockstore_json_str = '''{
+#            "program_name": "%s",
+#            "json_encoded": "%s",
+#            "docker_uri": "%s",
+#            "dockstore_url": "%s",
+#            "redwood_token": "%s",
+#            "redwood_host": "%s",
+#            "parent_uuids": "%s",
+#            "workflow_type": "%s",
+#            "tmpdir": "%s",
+#            "vm_instance_type": "c4.8xlarge",
+#            "vm_region": "%s",
+#            "vm_location": "aws",
+#            "vm_instance_cores": 36,
+#            "vm_instance_mem_gb": 60,
+#            "output_metadata_json": "/tmp/final_metadata.json"
+#        }''' % (meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
         print(dockstore_json_str, file=p)
         p.close()
@@ -219,12 +279,12 @@ class ConsonanceTask(luigi.Task):
             #get consonance job uuid from output of consonance command
             consonance_output = json.loads(consonance_output_json)
             if "job_uuid" in consonance_output:
-                meta_data["consonance_job_uuid"] = consonance_output["job_uuid"]
+                protect_job["consonance_job_uuid"] = consonance_output["job_uuid"]
             else:
                 print("ERROR: COULD NOT FIND CONSONANCE JOB UUID IN CONSONANCE OUTPUT!", file=sys.stderr)
         else:
             print("TEST MODE: Consonance command would be:"+ cmd_str)
-            meta_data["consonance_job_uuid"] = 'no consonance id in test mode'
+            protect_job["consonance_job_uuid"] = 'no consonance id in test mode'
 
         #remove the local parameterized JSON file that
         #was created for the Consonance call
@@ -234,9 +294,9 @@ class ConsonanceTask(luigi.Task):
         #convert the meta data to a string and
         #save the donor metadata for the sample being processed to the touch
         # file directory
-        meta_data_json = json.dumps(meta_data)
+        protect_job_json = json.dumps(protect_job)
         m = self.save_metadata_json().open('w')
-        print(meta_data_json, file=m)
+        print(protect_job_json, file=m)
         m.close()
 
 
@@ -248,6 +308,7 @@ class ConsonanceTask(luigi.Task):
 #                print "CLEANUP SUCCESSFUL"
 
          # NOW MAke a final report
+#        f = self.output(protect_job['sample_name']).open('w')
         f = self.output().open('w')
         # TODO: could print report on what was successful and what failed?  Also, provide enough details like donor ID etc
         print("Consonance task is complete", file=f)
@@ -258,26 +319,26 @@ class ConsonanceTask(luigi.Task):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/metadata.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/metadata.json' % ( task_uuid))
-        return S3Target('s3://%s/%s_meta_data.json' % (self.touch_file_path, self.submitter_sample_id ))
+        return S3Target('s3://%s/%s_meta_data.json' % (self.touch_file_path, self.sample_name ))
 
     def save_dockstore_json_local(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
         #return S3Target('%s/%s_dockstore_tool.json' % (self.touch_file_path, self.submitter_sample_id ))
-        return luigi.LocalTarget('/datastore/%s/%s_dockstore_tool.json' % (self.touch_file_path, self.submitter_sample_id ))
+        return luigi.LocalTarget('/tmp/%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
 
     def save_dockstore_json(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
-        return S3Target('s3://%s/%s_dockstore_tool.json' % (self.touch_file_path, self.submitter_sample_id ))
+        return S3Target('s3://%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
 
     def output(self):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/finished.txt' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/finished.txt' % ( task_uuid))
-        return S3Target('s3://%s/%s_finished.json' % (self.touch_file_path, self.submitter_sample_id ))
+        return S3Target('s3://%s/%s_finished.json' % (self.touch_file_path, self.sample_name ))
 
 
 class ProtectCoordinator(luigi.Task):
@@ -285,7 +346,7 @@ class ProtectCoordinator(luigi.Task):
     es_index_host = luigi.Parameter(default='localhost')
     es_index_port = luigi.Parameter(default='9200')
     redwood_token = luigi.Parameter("must_be_defined")
-    redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
+    redwood_host = luigi.Parameter(default='storage.ucsc-cgp.org')
     image_descriptor = luigi.Parameter("must be defined")
     dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14")
     tmp_dir = luigi.Parameter(default='/datastore')
@@ -293,10 +354,10 @@ class ProtectCoordinator(luigi.Task):
     bundle_uuid_filename_to_file_uuid = {}
     process_sample_uuid = luigi.Parameter(default = "")
 
-    workflow_version = luigi.Parameter(default="3.2.1-1")
+    workflow_version = luigi.Parameter(default="2.5.0-1.12.3")
     touch_file_bucket = luigi.Parameter(default="must be input")
 
-    vm_region = luigi.Parameter(default='us-east-2')
+    vm_region = luigi.Parameter(default='us-west-2')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
@@ -312,8 +373,31 @@ class ProtectCoordinator(luigi.Task):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
+        '''
+        rsem_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=rsem_ref_hg38_no_alt.tar.gz"), context=ctx).read()
+        star_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=starIndex_hg38_no_alt.tar.gz"), context=ctx).read()
+        kallisto_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=kallisto_hg38.idx"), context=ctx).read()
 
+        kallisto_data = json.loads(kallisto_json)
+        print(str(kallisto_data))
+        kallisto_bundle_uuid = kallisto_data["content"][0]["gnosId"]
+        kallisto_file_uuid = kallisto_data["content"][0]["id"]
+        kallisto_file_name = kallisto_data["content"][0]["fileName"]
+
+        rsem_data = json.loads(rsem_json)
+        print(str(rsem_data))
+        rsem_bundle_uuid = rsem_data["content"][0]["gnosId"]
+        rsem_file_uuid = rsem_data["content"][0]["id"]
+        rsem_file_name = rsem_data["content"][0]["fileName"]
+
+        star_data = json.loads(star_json)
+        print(str(star_data))
+        star_bundle_uuid = star_data["content"][0]["gnosId"]
+        star_file_uuid = star_data["content"][0]["id"]
+        star_file_name = star_data["content"][0]["fileName"]
+        '''
+
+        json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
         for i in range(0, metadata_struct["totalPages"]):
@@ -326,12 +410,13 @@ class ProtectCoordinator(luigi.Task):
         # now query elasticsearch
         print("setting up elastic search Elasticsearch([\"http:\/\/"+self.es_index_host+":"+self.es_index_port+"]")
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
-        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_protect_workflow_2_3_x" : "false"}},{"term" : {"flags.tumor_protect_workflow_2_3_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_protect_cgl_workflow_2_5_x" : "false"}},{"term" : {"flags.tumor_protect_cgl_workflow_2_5_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
 
         listOfJobs = []
 
+        protect_jobs  = defaultdict(dict)
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
@@ -339,122 +424,142 @@ class ProtectCoordinator(luigi.Task):
             print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
+            if(hit["_source"]["program"] != "PROTECT_NBL"):
+                continue
+
             for specimen in hit["_source"]["specimen"]:
                 print("Next sample of %d samples:" % len(specimen["samples"]))
                 for sample in specimen["samples"]:
                     print("Next analysis of %d analysis:" % len(sample["analysis"]))
                     #if a particular sample uuid is requested for processing and
                     #the current sample uuid does not match go on to the next sample
-                    if self.process_sample_uuid and (self.process_sample_uuid != sample["sample_uuid"]):
-                        continue
+                    #if self.process_sample_uuid and (self.process_sample_uuid != sample["sample_uuid"]):
+                    #    continue
+
+                    sample_name = sample["submitter_sample_id"][:-4]
+                    print('sample name:{}'.format(sample_name))
+                    sample_name_suffix = sample["submitter_sample_id"][-4:]
+                    print('sample name suffix:{}'.format(sample_name_suffix))
+
+
+                    workflow_version_dir = self.workflow_version.replace('.', '_')
+                    touch_file_path_prefix = self.touch_file_bucket+"/consonance-jobs/ProTECT_Coordinator/" + workflow_version_dir
+                    touch_file_path = touch_file_path_prefix+"/" \
+                                       +hit["_source"]["center_name"]+"_" \
+                                       +hit["_source"]["program"]+"_" \
+                                       +hit["_source"]["project"]+"_" \
+                                       +sample_name
+
+#                                       +hit["_source"]["submitter_donor_id"]+"_" \
+#                                       +specimen["submitter_specimen_id"]
+
+                    #should we remove all white space from the path in the case where i.e. the program name is two works separated by blanks?
+                    # remove all whitespace from touch file path
+                    #touch_file_path = ''.join(touch_file_path.split())
+
 
                     for analysis in sample["analysis"]:
+                        #print analysis
+                        print("HIT!!!! " + analysis["analysis_type"] + " " + str(hit["_source"]["flags"]["normal_sequence"]) 
+                              + " " + str(hit["_source"]["flags"]["tumor_sequence"]) + " " 
+                              + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
+
 
                         for output in analysis["workflow_outputs"]:
                             print(output)
  
                         if ( (analysis["analysis_type"] == "sequence_upload" and \
-                              ((hit["_source"]["flags"]["normal_protect_workflow_2_3_x"] == False and \
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_protect_workflow_2_3_x"] and \
+                              ((hit["_source"]["flags"]["normal_protect_cgl_workflow_2_5_x"] == False and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_protect_cgl_workflow_2_5_x"] and \
                                    re.match("^Normal - ", specimen["submitter_specimen_type"])) or \
-                               (hit["_source"]["flags"]["tumor_protect_workflow_2_3_x"] == False and \
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_protect_workflow_2_3_x"] and \
-                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"])))) or \
-
-                             #if the workload has already been run but we have no
-                             #output from the workload run it again
-                             (analysis["analysis_type"] == "sequence_upload" and \
-                              ((hit["_source"]["flags"]["normal_protect_workflow_2_3_x"] == True and \
-                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_protect_workflow_2_3_x"] or \
-                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["normal_protect_workflow_2_3_x"] and 
-                                                                                         (True))) and \
-                                   re.match("^Normal - ", specimen["submitter_specimen_type"])) or \
-                               (hit["_source"]["flags"]["tumor_protect_workflow_2_3_x"] == True and \
-                                   (sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_protect_workflow_2_3_x"] or \
-                                   (sample["sample_uuid"] in hit["_source"]["present_items"]["tumor_protect_workflow_2_3_x"] and 
-                                                                                         (True))) and \
-                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"])))) ):
-
-                            
-#                            touch_file_path = os.path.join(self.touch_file_path_prefix, hit["_source"]["center_name"] + "_" + hit["_source"]["program"] \
-#                                                                    + "_" + hit["_source"]["project"] + "_" + hit["_source"]["submitter_donor_id"] \
-#                                                                    + "_" + specimen["submitter_specimen_id"])
-
-
-                            touch_file_path = self.touch_file_path_prefix+"/"+hit["_source"]["center_name"]+"_"+hit["_source"]["program"] \
-                                                                    +"_"+hit["_source"]["project"]+"_"+hit["_source"]["submitter_donor_id"] \
-                                                                    +"_"+specimen["submitter_specimen_id"]
-                            submitter_sample_id = sample["submitter_sample_id"]
-
-                            #This metadata will be passed to the Consonance Task and some
-                            #some of the meta data will be used in the Luigi status page for the job
-                            meta_data = {}
-                            meta_data["program"] = hit["_source"]["program"]
-                            meta_data["project"] = hit["_source"]["project"]
-                            meta_data["center_name"] = hit["_source"]["center_name"]
-                            meta_data["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
-                            meta_data["donor_uuid"] = hit["_source"]["donor_uuid"]
-                            if "submitter_donor_primary_site" in hit["_source"]:
-                                meta_data["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
-                            else:
-                                meta_data["submitter_donor_primary_site"] = "not provided"
-                            meta_data["submitter_specimen_id"] = specimen["submitter_specimen_id"]
-                            meta_data["specimen_uuid"] = specimen["specimen_uuid"]
-                            meta_data["submitter_specimen_type"] = specimen["submitter_specimen_type"]
-                            meta_data["submitter_experimental_design"] = specimen["submitter_experimental_design"]
-                            meta_data["submitter_sample_id"] = sample["submitter_sample_id"]
-                            meta_data["sample_uuid"] = sample["sample_uuid"]
-                            meta_data["analysis_type"] = "protect_immunology" #TODO: change protect_immunology
-                            meta_data["workflow_name"] = "quay.io/ucsc_cgl/protect"
-                            meta_data["workflow_version"] = "2.3.0"
-
-                            meta_data_json = json.dumps(meta_data)
-                            print("meta data:")
-                            print(meta_data_json)
-
-
-                            #print analysis
-                            print("HIT!!!! " + analysis["analysis_type"] + " " + str(hit["_source"]["flags"]["normal_protect"]) 
-                                           + " " + str(hit["_source"]["flags"]["tumor_protect"]) + " " 
-                                           + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
+                               (hit["_source"]["flags"]["tumor_protect_cgl_workflow_2_5_x"] == False and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_protect_cgl_workflow_2_5_x"] and \
+                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]))))):
 
 
                             for file in analysis["workflow_outputs"]:
-                                print("file type:"+file["file_type"])
-                                print("file name:"+file["file_path"])
+                                print("\nfile type:"+file["file_type"])
+                                print("\nfile name:"+file["file_path"])
 
-                                if (file["file_type"] == "fastq" or
-                                    file["file_type"] == "fastq.gz"):
-                                        #if there is only one sequenc upload output then this must
-                                        #be a single read sample
-                                        if( len(analysis["workflow_outputs"]) == 1): 
-                                            print("adding %s of file type %s to files list" % (file["file_path"], file["file_type"]))
-                                            single_files.append(file["file_path"])
-                                            single_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
-                                            single_bundle_uuids.append(analysis["bundle_uuid"])
-                                            parent_uuids[sample["sample_uuid"]] = True
-                                        #otherwise we must be dealing with paired reads
-                                        else: 
-                                            print("adding %s of file type %s to files list" % (file["file_path"], file["file_type"]))
-                                            paired_files.append(file["file_path"])
-                                            paired_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
-                                            paired_bundle_uuids.append(analysis["bundle_uuid"])
-                                            parent_uuids[sample["sample_uuid"]] = True
-                                elif (file["file_type"] == "fastq.tar"):
-                                    print("adding %s of file type %s to files list" % (file["file_path"], file["file_type"]))
-                                    tar_files.append(file["file_path"])
-                                    tar_file_uuids.append(self.fileToUUID(file["file_path"], analysis["bundle_uuid"]))
-                                    tar_bundle_uuids.append(analysis["bundle_uuid"])
-                                    parent_uuids[sample["sample_uuid"]] = True
+                                #if (file["file_type"] != "fastq" or
+                                #    file["file_type"] != "fastq.gz"):
 
-                               listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, redwood_token=self.redwood_token, \
-                                    image_descriptor=self.image_descriptor, dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
-                                    parent_uuids = parent_uuids.keys(), \
-                                    single_filenames=single_files, single_file_uuids = single_file_uuids, single_bundle_uuids = single_bundle_uuids, \
-                                    paired_filenames=paired_files, paired_file_uuids = paired_file_uuids, paired_bundle_uuids = paired_bundle_uuids, \
-                                    tar_filenames=tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, \
-                                    tmp_dir=self.tmp_dir, submitter_sample_id = submitter_sample_id, meta_data_json = meta_data_json, \
-                                    touch_file_path = touch_file_path, test_mode=self.test_mode))
+                                file_path = 'redwood' + '/' + analysis['bundle_uuid'] + '/' + \
+                                    self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
+                                    "/" + file["file_path"]
+
+                                print('keys for ' + sample_name + ':' + ','.join(protect_jobs[sample_name].keys()))
+                                if sample_name_suffix == '-T-D':
+                                    if 'tumor_dna' not in protect_jobs[sample_name].keys():
+                                        key = 'tumor_dna'
+                                    else:
+                                        key = 'tumor_dna2'
+                                elif sample_name_suffix == '-N-D':
+                                    if 'normal_dna' not in protect_jobs[sample_name].keys():
+                                        key = 'normal_dna'
+                                    else:
+                                        key = 'normal_dna2'
+                                elif sample_name_suffix == '-T-R':
+                                    if 'tumor_rna' not in protect_jobs[sample_name].keys():
+                                        key = 'tumor_rna'
+                                    else:
+                                        key = 'tumor_rna2'
+                                else:
+                                    print("ERROR in spinnaker input!!!", file=sys.stderr)
+
+                                print("sample key is:{}".format(key))   
+                                protect_jobs[sample_name][key] = {"class" : "file", "path" : file_path}
+
+                                if 'parent_uuids' not in protect_jobs[sample_name].keys():
+                                    protect_jobs[sample_name]["parent_uuids"] = []
+                                
+                                if sample["sample_uuid"] not in protect_jobs[sample_name]["parent_uuids"]: 
+                                    protect_jobs[sample_name]["parent_uuids"].append(sample["sample_uuid"])
+
+
+                            #This metadata will be passed to the Consonance Task and some
+                            #some of the meta data will be used in the Luigi status page for the job
+                            protect_jobs[sample_name]["sample_name"] = sample_name
+                            protect_jobs[sample_name]["program"] = hit["_source"]["program"]
+                            protect_jobs[sample_name]["project"] = hit["_source"]["project"]
+                            protect_jobs[sample_name]["center_name"] = hit["_source"]["center_name"]
+                            protect_jobs[sample_name]["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
+                            protect_jobs[sample_name]["donor_uuid"] = hit["_source"]["donor_uuid"]
+                            if "submitter_donor_primary_site" in hit["_source"]:
+                                protect_jobs[sample_name]["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
+                            else:
+                                protect_jobs[sample_name]["submitter_donor_primary_site"] = "not provided"
+                            #protect_jobs[sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
+                            #protect_jobs[sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
+                            protect_jobs[sample_name]["submitter_specimen_type"] = specimen["submitter_specimen_type"]
+                            protect_jobs[sample_name]["submitter_experimental_design"] = specimen["submitter_experimental_design"]
+                            #protect_jobs[sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
+                            #protect_jobs[sample_name]["sample_uuid"] = sample["sample_uuid"]
+                            protect_jobs[sample_name]["analysis_type"] = "immuno_target_pipelines"
+                            protect_jobs[sample_name]["workflow_name"] = "quay.io/ucsc_cgl/protect"
+                            protect_jobs[sample_name]["workflow_version"] = self.workflow_version
+
+                            print("\nprotect jobs with meta data:", protect_jobs)
+
+
+        for sample_num, sample_name in enumerate(protect_jobs):
+            print('sample num:{}'.format(sample_num)) 
+            if (sample_num < int(self.max_jobs) or int(self.max_jobs) < 0):
+                protect_job_json = json.dumps(protect_jobs[sample_name])
+                print("\nmeta data:")
+                print(protect_job_json)
+
+                listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, \
+                    vm_region = self.vm_region, \
+                    redwood_token=self.redwood_token, \
+                    image_descriptor=self.image_descriptor, \
+                    dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
+                    sample_name = sample_name, \
+                    tmp_dir=self.tmp_dir, \
+                    workflow_version = self.workflow_version, \
+                    #submitter_sample_id = protect_jobs[sample_name]['submitter_sample_id'], \
+                    protect_job_json = protect_job_json, \
+                    touch_file_path = touch_file_path, test_mode=self.test_mode))
 
             
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
@@ -478,12 +583,12 @@ class ProtectCoordinator(luigi.Task):
         ts = time.time()
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/RNASeqTask-%s.txt' % (self.tmp_dir, ts_str))
-        return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/Protect/ProtectTask-%s.txt' % (ts_str))
+        workflow_version_dir = self.workflow_version.replace('.', '_')
+        return S3Target('s3://'+self.touch_file_bucket+'/consonance-jobs/ProTECT_Coordinator/{}/ProtectTask-{}.txt'.format(workflow_version_dir, ts_str))
 
     def fileToUUID(self, input, bundle_uuid):
         return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]
         #"afb54dff-41ad-50e5-9c66-8671c53a278b"
-
 
 if __name__ == '__main__':
     luigi.run()
