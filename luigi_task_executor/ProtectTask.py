@@ -164,17 +164,18 @@ class ConsonanceTask(luigi.Task):
             json_dict["tumor_dna"] = protect_job['tumor_dna']
         else:
             print("ERROR: no tumor dna file!", file=sys.stderr)
-        json_dict["tumor_dna2"] = protect_job['tumor_dna2']
-        json_dict["normal_dna"] = protect_job['normal_dna']
-        json_dict["normal_dna2"] = protect_job['normal_dna2']
-        json_dict["tumor_rna"] = protect_job['tumor_rna']
-        json_dict["tumor_rna2"] = protect_job['tumor_rna2']
+        json_dict["normal-dna"] = protect_job['normal_dna']
+        json_dict["normal-dna2"] = protect_job['normal_dna2']
+        json_dict["tumor-rna"] = protect_job['tumor_rna']
+        json_dict["tumor-rna2"] = protect_job['tumor_rna2']
+        json_dict["tumor-dna"] = protect_job['tumor_dna']
+        json_dict["tumor-dna2"] = protect_job['tumor_dna2']
 
         json_dict["sample-name"] = protect_job['sample_name']
         json_dict["tumor-type"] = "STAD"
         json_dict["work-mount"] = "/datastore/"
-        json_dict["reference_build"] = "hg19"
-        json_dict["mail_to"] = "jqpublic@myschool.edu"
+        json_dict["reference-build"] = "hg19"
+        json_dict["mail-to"] = "jqpublic@myschool.edu"
 
         print("json dict:")
         print(dict(json_dict))
@@ -185,7 +186,7 @@ class ConsonanceTask(luigi.Task):
         # see http://luigi.readthedocs.io/en/stable/api/luigi.parameter.html?highlight=luigi.parameter
         # TODO: this is tied to the requirements of the tool being targeted
         
-        json_str = json.dumps(json_dict)
+        json_str = json.dumps(json_dict, sort_keys=True, indent=4, separators=(',', ': '))
         print("THE JSON: "+json_str)
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
@@ -203,22 +204,22 @@ class ConsonanceTask(luigi.Task):
 
         target_tool= self.target_tool_prefix + ":" + self.workflow_version
 
-        dockstore_json_str = {}
-        dockstore_json_str["program_name"] = protect_job["program"].replace(' ','_')
-        dockstore_json_str["json_encoded"] = base64_json_str
-        dockstore_json_str["docker_uri"] = target_tool
-        dockstore_json_str["dockstore_url" ] = self.target_tool_url
-        dockstore_json_str["redwood_token" ] = self.redwood_token
-        dockstore_json_str["redwood_host"] = self.redwood_host
-        dockstore_json_str["parent_uuids"] = parent_uuids
-        dockstore_json_str["workflow_type"] = self.workflow_type
-        dockstore_json_str["tmpdir"] = self.tmp_dir
-        dockstore_json_str["vm_instance_type"] = "c4.8xlarge"
-        dockstore_json_str["vm_region"] = self.vm_region
-        dockstore_json_str["vm_location"] = "aws"
-        dockstore_json_str["vm_instance_cores"] = 36
-        dockstore_json_str["vm_instance_mem_gb"] = 60
-        dockstore_json_str["output_metadata_json"] = "/tmp/final_metadata.json"
+        dockstore_json = {}
+        dockstore_json["program_name"] = protect_job["program"].replace(' ','_')
+        dockstore_json["json_encoded"] = base64_json_str
+        dockstore_json["docker_uri"] = target_tool
+        dockstore_json["dockstore_url" ] = self.target_tool_url
+        dockstore_json["redwood_token" ] = self.redwood_token
+        dockstore_json["redwood_host"] = self.redwood_host
+        dockstore_json["parent_uuids"] = parent_uuids
+        dockstore_json["workflow_type"] = self.workflow_type
+        dockstore_json["tmpdir"] = self.tmp_dir
+        dockstore_json["vm_instance_type"] = "c4.8xlarge"
+        dockstore_json["vm_region"] = self.vm_region
+        dockstore_json["vm_location"] = "aws"
+        dockstore_json["vm_instance_cores"] = 36
+        dockstore_json["vm_instance_mem_gb"] = 60
+        dockstore_json["output_metadata_json"] = "/tmp/final_metadata.json"
 
 #        dockstore_json_str = '''{
 #            "program_name": "%s",
@@ -238,6 +239,7 @@ class ConsonanceTask(luigi.Task):
 #            "output_metadata_json": "/tmp/final_metadata.json"
 #        }''' % (meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
+        dockstore_json_str = json.dumps(dockstore_json , sort_keys=True, indent=4, separators=(',', ': '))
         print(dockstore_json_str, file=p)
         p.close()
     
@@ -294,7 +296,7 @@ class ConsonanceTask(luigi.Task):
         #convert the meta data to a string and
         #save the donor metadata for the sample being processed to the touch
         # file directory
-        protect_job_json = json.dumps(protect_job)
+        protect_job_json = json.dumps(protect_job, sort_keys=True, indent=4, separators=(',', ': '))
         m = self.save_metadata_json().open('w')
         print(protect_job_json, file=m)
         m.close()
@@ -545,7 +547,7 @@ class ProtectCoordinator(luigi.Task):
         for sample_num, sample_name in enumerate(protect_jobs):
             print('sample num:{}'.format(sample_num)) 
             if (sample_num < int(self.max_jobs) or int(self.max_jobs) < 0):
-                protect_job_json = json.dumps(protect_jobs[sample_name])
+                protect_job_json = json.dumps(protect_jobs[sample_name], sort_keys=True, indent=4, separators=(',', ': '))
                 print("\nmeta data:")
                 print(protect_job_json)
 
