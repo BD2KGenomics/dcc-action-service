@@ -174,8 +174,8 @@ class ConsonanceTask(luigi.Task):
         json_dict["sample-name"] = protect_job['sample_name']
         json_dict["tumor-type"] = "STAD"
         json_dict["work-mount"] = "/datastore/"
-        json_dict["reference-build"] = "hg19"
-        json_dict["mail-to"] = "jqpublic@myschool.edu"
+        json_dict["reference_build"] = "hg19"
+        json_dict["mail_to"] = "jqpublic@myschool.edu"
 
         print("json dict:")
         print(dict(json_dict))
@@ -510,7 +510,7 @@ class ProtectCoordinator(luigi.Task):
                                     print("ERROR in spinnaker input!!!", file=sys.stderr)
 
                                 print("sample key is:{}".format(key))   
-                                protect_jobs[sample_name][key] = {"class" : "file", "path" : file_path}
+                                protect_jobs[sample_name][key] = {"class" : "File", "path" : file_path}
 
                                 if 'parent_uuids' not in protect_jobs[sample_name].keys():
                                     protect_jobs[sample_name]["parent_uuids"] = []
