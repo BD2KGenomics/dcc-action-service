@@ -68,50 +68,6 @@ class ConsonanceTask(luigi.Task):
     mhcii = luigi.Parameter(default="")
     mhc_pathway_assessment = luigi.Parameter(default="")
     ### TODO ABOVE###
-
-    tumor_dna = luigi.Parameter(default="")
-    if tumor_dna:
-        json_dict["tumor_dna"] = {"class" : "File", "path" : tumor_dna}
-    normal_dna = luigi.Parameter(default="")
-    if normal_dna:
-        json_dict["normal_dna"] = {"class" : "File", "path" : normal_dna}
-    tumor_dna2 = luigi.Parameter(default="")
-    if tumor_dna2:
-        json_dict["tumor_dna2"] = {"class" : "File", "path" : tumor_dna2}
-    tumor_rna2 = luigi.Parameter(default="")
-    if tumor_rna2:
-        json_dict["tumor_rna2"] = {"class" : "File", "path" : tumor_rna2}
-    normal_dna2 = luigi.Parameter(default="")
-    if normal_dna2:
-        json_dict["normal_dna2"] = {"class" : "File", "path" : normal_dna2}
-
-    tumor_rna = luigi.Parameter(default="")
-    if tumor_rna:
-        json_dict["tumor_rna"] = {"class" : "File", "path" : tumor_rna}
-    tumor_rna2 = luigi.Parameter(default="")
-    if tumor_rna2:
-        json_dict["tumor_rna2"] = {"class" : "File", "path" : tumor_rna2}
-
-    json_dict["sample-name"] = "protect-sample" #TODO what should this be??????????
-
-    json_dict["tumor-type"] = "STAD"
-
-    json_dict["work-mount"] : "/datastore/"
-
-    json_dict["reference_build"] = "hg19"
-
-    json_dict["mail_to"] = "jqpublic@myschool.edu"
-
-
-    star_path = luigi.Parameter(default="")
-    if star_path:
-        json_dict["star_path"] = {"class" : "File", "path" : star_path}
-    bwa_path = luigi.Parameter(default="")
-    if bwa_path:
-        json_dict["bwa_path"] = {"class" : "File", "path" : bwa_path}
-    rsem_path = luigi.Parameter(default="")
-    if rsem_path:
-        json_dict["rsem_path"] = {"class" : "File", "path" : rsem_path}
     '''
 
     tmp_dir = luigi.Parameter(default='/datastore') #equivalent of work mount
@@ -122,6 +78,7 @@ class ConsonanceTask(luigi.Task):
     #output_filename = sample_name
     #submitter_sample_id = luigi.Parameter(default='must input submitter sample id')
     protect_job_json = luigi.Parameter(default="must input metadata")
+    protect_reference_files_json = luigi.Parameter(default="must input reference file metadata")
 
     touch_file_path = luigi.Parameter(default='must input touch file path')
 
@@ -157,27 +114,34 @@ class ConsonanceTask(luigi.Task):
             sys.exit(return_code)
 
         protect_job = json.loads(self.protect_job_json)
-        output_base_name = protect_job["sample_name"]
+        output_base_name = protect_job['sample_name']
        
         json_dict = defaultdict() 
         if 'tumor_dna' in protect_job['tumor_dna'].keys():
             json_dict["tumor_dna"] = protect_job['tumor_dna']
         else:
             print("ERROR: no tumor dna file!", file=sys.stderr)
-        json_dict["normal-dna"] = protect_job['normal_dna']
-        json_dict["normal-dna2"] = protect_job['normal_dna2']
-        json_dict["tumor-rna"] = protect_job['tumor_rna']
-        json_dict["tumor-rna2"] = protect_job['tumor_rna2']
-        json_dict["tumor-dna"] = protect_job['tumor_dna']
-        json_dict["tumor-dna2"] = protect_job['tumor_dna2']
+        json_dict["normal_dna"] = protect_job['normal_dna']
+        json_dict["normal_dna2"] = protect_job['normal_dna2']
+        json_dict["tumor_rna"] = protect_job['tumor_rna']
+        json_dict["tumor_rna2"] = protect_job['tumor_rna2']
+        json_dict["tumor_dna"] = protect_job['tumor_dna']
+        json_dict["tumor_dna2"] = protect_job['tumor_dna2']
 
-        json_dict["sample-name"] = protect_job['sample_name']
-        json_dict["tumor-type"] = "STAD"
-        json_dict["work-mount"] = "/datastore/"
-        json_dict["reference_build"] = "hg19"
+        json_dict["sample_name"] = protect_job['sample_name']
+        json_dict["tumor_type"] = "STAD"
+        json_dict["work_mount"] = "/datastore/"
+        json_dict["reference_build"] = "hg38"
         json_dict["mail_to"] = "jqpublic@myschool.edu"
 
-        print("json dict:")
+        protect_reference_files = json.loads(self.protect_reference_files_json)
+
+        for option, reference_files_dict in protect_reference_files.iteritems():
+           json_dict[option] = reference_files_dict
+
+
+
+        print("\njson dict:")
         print(dict(json_dict))
 
         print("** MAKE JSON FOR WORKER **")
@@ -375,30 +339,6 @@ class ProtectCoordinator(luigi.Task):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        '''
-        rsem_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=rsem_ref_hg38_no_alt.tar.gz"), context=ctx).read()
-        star_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=starIndex_hg38_no_alt.tar.gz"), context=ctx).read()
-        kallisto_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName=kallisto_hg38.idx"), context=ctx).read()
-
-        kallisto_data = json.loads(kallisto_json)
-        print(str(kallisto_data))
-        kallisto_bundle_uuid = kallisto_data["content"][0]["gnosId"]
-        kallisto_file_uuid = kallisto_data["content"][0]["id"]
-        kallisto_file_name = kallisto_data["content"][0]["fileName"]
-
-        rsem_data = json.loads(rsem_json)
-        print(str(rsem_data))
-        rsem_bundle_uuid = rsem_data["content"][0]["gnosId"]
-        rsem_file_uuid = rsem_data["content"][0]["id"]
-        rsem_file_name = rsem_data["content"][0]["fileName"]
-
-        star_data = json.loads(star_json)
-        print(str(star_data))
-        star_bundle_uuid = star_data["content"][0]["gnosId"]
-        star_file_uuid = star_data["content"][0]["id"]
-        star_file_name = star_data["content"][0]["fileName"]
-        '''
-
         json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
@@ -416,9 +356,61 @@ class ProtectCoordinator(luigi.Task):
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
 
+        reference_cwl_switch_to_file = {
+            'star_index' : 'star_with_fusion_100bp_readlen_indexes.tar.gz', \
+            'bwa_index' : 'bwa_index.tar.gz', \
+            'rsem_index' : 'rsem_index.tar.gz', \
+            'genome_fasta' : 'hg38.fa.tar.gz', \
+            'genome_fai' : 'hg38.fa.fai.tar.gz', \
+            'genome_dict' : 'hg38.dict.tar.gz', \
+            'dbsnp_vcf' : 'dbsnp_coding.vcf.gz', \
+            'cosmic_vcf' : 'CosmicCodingMuts.vcf.tar.gz', \
+            'cosmic_idx' : 'CosmicCodingMuts.vcf.idx.tar.gz', \
+            'dbsnp_idx' : 'dbsnp_coding.vcf.idx.tar.gz', \
+            'dbsnp_tbi' : 'dbsnp_coding.vcf.gz.tbi', \
+            'cosmic_beds' : 'radia_cosmic.tar.gz', \
+            'dbsnp_beds' : 'radia_dbsnp.tar.gz', \
+            'retrogene_beds' : 'radia_retrogenes.tar.gz', \
+            'pseudogene_beds' : 'radia_pseudogenes.tar.gz', \
+            'gencode_beds' : 'radia_gencode.tar.gz', \
+            'strelka_config' : 'strelka_bwa_WXS_config.ini.tar.gz', \
+            'snpeff' : 'snpeff_index.tar.gz', \
+            'transgene_peptide_fasta' : 'gencode.v25.pc_translations_NOPARY.fa.tar.gz', \
+            'transgene_transcript_fasta' : 'gencode.v25.pc_transcripts_NOPARY.fa.tar.gz', \
+            'transgene_annotation_gtf' : 'gencode.v25.annotation_NOPARY.gtf.tar.gz', \
+            'transgene_genome' : 'hg38.fa.tar.gz', \
+            'phlat' : 'phlat_index.tar.gz', \
+            'mhci' : 'mhci_restrictions.json.tar.gz', \
+            'mhcii' : 'mhcii_restrictions.json.tar.gz', \
+            'mhc_pathways_file' : 'mhc_pathways.tsv.tar.gz', \
+            'itx_resistance_file' : 'itx_resistance.tsv.tar.gz', \
+            'immune_resistance_pathways_file' : 'immune_resistance_pathways.json.tar.gz', \
+            'car_t_targets_file' : 'car_t_targets.tsv.tar.gz' 
+        }
+
         listOfJobs = []
 
         protect_jobs  = defaultdict(dict)
+        protect_jobs['samples'] = defaultdict(dict)
+
+        #Get the reference file metadata from the storage system
+        #and create a file path that the Dockstore tool runner can
+        #used to download the reference file from the storage system
+        for switch, file_name in reference_cwl_switch_to_file.iteritems():
+            print("switch:{} file name {}".format(switch, file_name))
+            file_name_metadata_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName="+file_name), context=ctx).read()
+            file_name_metadata = json.loads(file_name_metadata_json)
+            print(str(file_name_metadata))
+            bundle_uuid = file_name_metadata["content"][0]["gnosId"]
+            file_uuid = file_name_metadata["content"][0]["id"]
+            file_name = file_name_metadata["content"][0]["fileName"]
+
+            ref_file_path = 'redwood' + '/' + bundle_uuid + '/' + \
+                        file_uuid + "/" + file_name
+            protect_jobs['hg38_reference_files'][switch] = {"class" : "File", "path" : ref_file_path}
+            print(str(protect_jobs['hg38_reference_files'][switch]))
+
+
 
         print("Got %d Hits:" % res['hits']['total'])
         for hit in res['hits']['hits']:
@@ -443,7 +435,6 @@ class ProtectCoordinator(luigi.Task):
                     sample_name_suffix = sample["submitter_sample_id"][-4:]
                     print('sample name suffix:{}'.format(sample_name_suffix))
 
-
                     workflow_version_dir = self.workflow_version.replace('.', '_')
                     touch_file_path_prefix = self.touch_file_bucket+"/consonance-jobs/ProTECT_Coordinator/" + workflow_version_dir
                     touch_file_path = touch_file_path_prefix+"/" \
@@ -451,9 +442,6 @@ class ProtectCoordinator(luigi.Task):
                                        +hit["_source"]["program"]+"_" \
                                        +hit["_source"]["project"]+"_" \
                                        +sample_name
-
-#                                       +hit["_source"]["submitter_donor_id"]+"_" \
-#                                       +specimen["submitter_specimen_id"]
 
                     #should we remove all white space from the path in the case where i.e. the program name is two works separated by blanks?
                     # remove all whitespace from touch file path
@@ -490,19 +478,19 @@ class ProtectCoordinator(luigi.Task):
                                     self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
                                     "/" + file["file_path"]
 
-                                print('keys for ' + sample_name + ':' + ','.join(protect_jobs[sample_name].keys()))
+                                print('keys for ' + sample_name + ':' + ','.join(protect_jobs['samples'][sample_name].keys()))
                                 if sample_name_suffix == '-T-D':
-                                    if 'tumor_dna' not in protect_jobs[sample_name].keys():
+                                    if 'tumor_dna' not in protect_jobs['samples'][sample_name].keys():
                                         key = 'tumor_dna'
                                     else:
                                         key = 'tumor_dna2'
                                 elif sample_name_suffix == '-N-D':
-                                    if 'normal_dna' not in protect_jobs[sample_name].keys():
+                                    if 'normal_dna' not in protect_jobs['samples'][sample_name].keys():
                                         key = 'normal_dna'
                                     else:
                                         key = 'normal_dna2'
                                 elif sample_name_suffix == '-T-R':
-                                    if 'tumor_rna' not in protect_jobs[sample_name].keys():
+                                    if 'tumor_rna' not in protect_jobs['samples'][sample_name].keys():
                                         key = 'tumor_rna'
                                     else:
                                         key = 'tumor_rna2'
@@ -510,46 +498,51 @@ class ProtectCoordinator(luigi.Task):
                                     print("ERROR in spinnaker input!!!", file=sys.stderr)
 
                                 print("sample key is:{}".format(key))   
-                                protect_jobs[sample_name][key] = {"class" : "File", "path" : file_path}
+                                protect_jobs['samples'][sample_name][key] = {"class" : "File", "path" : file_path}
 
-                                if 'parent_uuids' not in protect_jobs[sample_name].keys():
-                                    protect_jobs[sample_name]["parent_uuids"] = []
+                                if 'parent_uuids' not in protect_jobs['samples'][sample_name].keys():
+                                    protect_jobs['samples'][sample_name]["parent_uuids"] = []
                                 
-                                if sample["sample_uuid"] not in protect_jobs[sample_name]["parent_uuids"]: 
-                                    protect_jobs[sample_name]["parent_uuids"].append(sample["sample_uuid"])
+                                if sample["sample_uuid"] not in protect_jobs['samples'][sample_name]["parent_uuids"]: 
+                                    protect_jobs['samples'][sample_name]["parent_uuids"].append(sample["sample_uuid"])
 
 
                             #This metadata will be passed to the Consonance Task and some
                             #some of the meta data will be used in the Luigi status page for the job
-                            protect_jobs[sample_name]["sample_name"] = sample_name
-                            protect_jobs[sample_name]["program"] = hit["_source"]["program"]
-                            protect_jobs[sample_name]["project"] = hit["_source"]["project"]
-                            protect_jobs[sample_name]["center_name"] = hit["_source"]["center_name"]
-                            protect_jobs[sample_name]["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
-                            protect_jobs[sample_name]["donor_uuid"] = hit["_source"]["donor_uuid"]
+                            protect_jobs['samples'][sample_name]["sample_name"] = sample_name
+                            protect_jobs['samples'][sample_name]["program"] = hit["_source"]["program"]
+                            protect_jobs['samples'][sample_name]["project"] = hit["_source"]["project"]
+                            protect_jobs['samples'][sample_name]["center_name"] = hit["_source"]["center_name"]
+                            protect_jobs['samples'][sample_name]["submitter_donor_id"] = hit["_source"]["submitter_donor_id"]
+                            protect_jobs['samples'][sample_name]["donor_uuid"] = hit["_source"]["donor_uuid"]
                             if "submitter_donor_primary_site" in hit["_source"]:
-                                protect_jobs[sample_name]["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
+                                protect_jobs['samples'][sample_name]["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
                             else:
-                                protect_jobs[sample_name]["submitter_donor_primary_site"] = "not provided"
-                            #protect_jobs[sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
-                            #protect_jobs[sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
-                            protect_jobs[sample_name]["submitter_specimen_type"] = specimen["submitter_specimen_type"]
-                            protect_jobs[sample_name]["submitter_experimental_design"] = specimen["submitter_experimental_design"]
-                            #protect_jobs[sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
-                            #protect_jobs[sample_name]["sample_uuid"] = sample["sample_uuid"]
-                            protect_jobs[sample_name]["analysis_type"] = "immuno_target_pipelines"
-                            protect_jobs[sample_name]["workflow_name"] = "quay.io/ucsc_cgl/protect"
-                            protect_jobs[sample_name]["workflow_version"] = self.workflow_version
+                                protect_jobs['samples'][sample_name]["submitter_donor_primary_site"] = "not provided"
+                            #protect_jobs['samples'][sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
+                            #protect_jobs['samples'][sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
+                            protect_jobs['samples'][sample_name]["submitter_specimen_type"] = specimen["submitter_specimen_type"]
+                            protect_jobs['samples'][sample_name]["submitter_experimental_design"] = specimen["submitter_experimental_design"]
+                            #protect_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
+                            #protect_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
+                            protect_jobs['samples'][sample_name]["analysis_type"] = "immuno_target_pipelines"
+                            protect_jobs['samples'][sample_name]["workflow_name"] = "quay.io/ucsc_cgl/protect"
+                            protect_jobs['samples'][sample_name]["workflow_version"] = self.workflow_version
 
                             print("\nprotect jobs with meta data:", protect_jobs)
 
 
-        for sample_num, sample_name in enumerate(protect_jobs):
+        for sample_num, sample_name in enumerate(protect_jobs['samples']):
             print('sample num:{}'.format(sample_num)) 
             if (sample_num < int(self.max_jobs) or int(self.max_jobs) < 0):
-                protect_job_json = json.dumps(protect_jobs[sample_name], sort_keys=True, indent=4, separators=(',', ': '))
+                protect_job_json = json.dumps(protect_jobs['samples'][sample_name], sort_keys=True, indent=4, separators=(',', ': '))
                 print("\nmeta data:")
                 print(protect_job_json)
+
+                protect_reference_files_json = json.dumps(protect_jobs['hg38_reference_files'], sort_keys=True, indent=4, separators=(',', ': '))
+                print("\nprotect reference files meta data:")
+                print(protect_reference_files_json)
+
 
                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, \
                     vm_region = self.vm_region, \
@@ -559,8 +552,9 @@ class ProtectCoordinator(luigi.Task):
                     sample_name = sample_name, \
                     tmp_dir=self.tmp_dir, \
                     workflow_version = self.workflow_version, \
-                    #submitter_sample_id = protect_jobs[sample_name]['submitter_sample_id'], \
+                    #submitter_sample_id = protect_jobs['samples'][sample_name]['submitter_sample_id'], \
                     protect_job_json = protect_job_json, \
+                    protect_reference_files_json = protect_reference_files_json, \
                     touch_file_path = touch_file_path, test_mode=self.test_mode))
 
             
