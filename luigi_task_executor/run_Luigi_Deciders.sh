@@ -61,6 +61,10 @@ echo "Running Luigi RNA-Seq decider" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 #This will be the new run commmand:
 PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14" --workflow-version "3.3.4--1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-region ${AWS_REGION} --tmp-dir /datastore  > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
+PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module CNV CNVCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14" --workflow-version "master" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project WCDT --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_CNV_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_CNV_decider_stderr.txt
+
+
+
 #These are log file messages used for testing: 
 
 #echo -e "\n\n"
