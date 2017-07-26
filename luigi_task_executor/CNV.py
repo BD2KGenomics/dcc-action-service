@@ -55,6 +55,7 @@ class ConsonanceTask(luigi.Task):
     sse_key_is_master = luigi.BoolParameter(default= False)
 
     sample_name = luigi.Parameter(default='must input sample name')
+    specimen_type = luigi.Parameter(default='must input sample name')
     #output_filename = sample_name
     #submitter_sample_id = luigi.Parameter(default='must input submitter sample id')
     cnv_job_json = luigi.Parameter(default="must input metadata")
@@ -235,26 +236,26 @@ class ConsonanceTask(luigi.Task):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/metadata.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/metadata.json' % ( task_uuid))
-        return S3Target('s3://%s/%s_meta_data.json' % (self.touch_file_path, self.sample_name ))
+        return S3Target('s3://%s/%s_meta_data.json' % (self.touch_file_path, self.sample_name + "_" + self.specimen_type ))
 
     def save_dockstore_json_local(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
         #return S3Target('%s/%s_dockstore_tool.json' % (self.touch_file_path, self.submitter_sample_id ))
-        return luigi.LocalTarget('/tmp/%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
+        return luigi.LocalTarget('/tmp/%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name + "_" + self.specimen_type ))
 
     def save_dockstore_json(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
-        return S3Target('s3://%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
+        return S3Target('s3://%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name + "_" + self.specimen_type  ))
 
     def output(self):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/finished.txt' % (self.tmp_dir, task_uuid))
         #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/finished.txt' % ( task_uuid))
-        return S3Target('s3://%s/%s_finished.json' % (self.touch_file_path, self.sample_name ))
+        return S3Target('s3://%s/%s_finished.json' % (self.touch_file_path, self.sample_name + "_" + self.specimen_type  ))
 
 
 class CNVCoordinator(luigi.Task):
@@ -374,8 +375,6 @@ class CNVCoordinator(luigi.Task):
                     print('specimen type:{}'.format(specimen_type))
 
                     cnv_jobs['samples'][sample_name]['SAMPLE_ID'] = sample_name
-                    cnv_jobs['samples'][sample_name]['ADTEX_OUTCNV'] = sample_name + '_' + specimen_type + '_ADTEX.cnv'
-                    cnv_jobs['samples'][sample_name]['VARSCAN_OUTCNV'] = sample_name + '_' + specimen_type + '_VARSCAN.cnv'
 
 
                     workflow_version_dir = self.workflow_version.replace('.', '_')
@@ -383,8 +382,7 @@ class CNVCoordinator(luigi.Task):
                     touch_file_path = touch_file_path_prefix+"/" \
                                        +hit["_source"]["center_name"]+"_" \
                                        +hit["_source"]["program"]+"_" \
-                                       +hit["_source"]["project"]+"_" \
-                                       +sample_name
+                                       +hit["_source"]["project"]
 
                     #should we remove all white space from the path in the case where i.e. the program name is two works separated by blanks?
                     # remove all whitespace from touch file path
@@ -401,8 +399,8 @@ class CNVCoordinator(luigi.Task):
                         for output in analysis["workflow_outputs"]:
                             print(output)
  
-                       #if ( (analysis["analysis_type"] == "alignment" and \
-                        if ( (analysis["analysis_type"] == "cnv_variant_calling" and \
+                        if ( (analysis["analysis_type"] == "alignment" and \
+                        #if ( (analysis["analysis_type"] == "cnv_variant_calling" and \
                               ((
                                 #hit["_source"]["flags"]["normal_cnv_workflow"] == False and \
                                 #   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_cnv_workflow"] and \
@@ -434,8 +432,8 @@ class CNVCoordinator(luigi.Task):
                                     cnv_jobs['samples'][sample_name]['NORMAL_BAM'] = {"class" : "File", "path" : file_path}
                                 elif (specimen_type == 'Baseline' or specimen_type == 'Progression') and file_path.endswith('.bam'):
                                     if 'tumor_bams' not in cnv_jobs['samples'][sample_name].keys():
-                                        cnv_jobs['samples'][sample_name]['tumor_bams'] = []
-                                    cnv_jobs['samples'][sample_name]['tumor_bams'].append({"class" : "File", "path" : file_path})
+                                        cnv_jobs['samples'][sample_name]['tumor_bams'] = defaultdict(dict)
+                                    cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type] = {"class" : "File", "path" : file_path}
                                 else:
                                     print("ERROR in spinnaker input!!!", file=sys.stderr)
 
@@ -475,13 +473,24 @@ class CNVCoordinator(luigi.Task):
             print('sample num:{}'.format(sample_num))
             print('sample:{}'.format(cnv_jobs['samples'][sample_name]))
 
+            if 'tumor_bams' not in cnv_jobs['samples'][sample_name].keys():
+                print("ERROR: no tumor BAM files for sample {}".format(sample_name))
+                continue
+
+            if 'NORMAL_BAM' not in cnv_jobs['samples'][sample_name].keys():
+                print("ERROR: no normal BAM file for sample {}".format(sample_name))
+                continue
+
             #get the JSON dict describing either Progression or Baseline
             #and schedule a job for each with the Normal BAM which is already set up
             print('tumor bams:{}'.format(cnv_jobs['samples'][sample_name]['tumor_bams']))
 
-            for tumor_bam_json in cnv_jobs['samples'][sample_name]['tumor_bams']:
+            for specimen_type, tumor_bam_json in cnv_jobs['samples'][sample_name]['tumor_bams'].iteritems():
                 print('tumor bam json:{}'.format(tumor_bam_json))
                 cnv_jobs['samples'][sample_name]['TUMOR_BAM'] = tumor_bam_json
+                cnv_jobs['samples'][sample_name]['ADTEX_OUTCNV'] = sample_name + '_' + specimen_type + '_ADTEX.cnv'
+                cnv_jobs['samples'][sample_name]['VARSCAN_OUTCNV'] = sample_name + '_' + specimen_type + '_VARSCAN.cnv'
+                full_touch_file_path = touch_file_path + "_" + sample_name + "_" + specimen_type
 
                 if (sample_num < int(self.max_jobs) or int(self.max_jobs) < 0):
                     cnv_job_json = json.dumps(cnv_jobs['samples'][sample_name], sort_keys=True, indent=4, separators=(',', ': '))
@@ -500,12 +509,13 @@ class CNVCoordinator(luigi.Task):
                         image_descriptor=self.image_descriptor, \
                         dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
                         sample_name = sample_name, \
+                        specimen_type = specimen_type, \
                         tmp_dir=self.tmp_dir, \
                         workflow_version = self.workflow_version, \
                         #submitter_sample_id = cnv_jobs['samples'][sample_name]['submitter_sample_id'], \
                         cnv_job_json = cnv_job_json, \
                         cnv_reference_files_json = cnv_reference_files_json, \
-                        touch_file_path = touch_file_path, test_mode=self.test_mode))
+                        touch_file_path = full_touch_file_path, test_mode=self.test_mode))
 
             
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
