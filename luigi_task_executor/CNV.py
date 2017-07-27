@@ -147,6 +147,7 @@ class ConsonanceTask(luigi.Task):
         dockstore_json["redwood_host"] = self.redwood_host
         dockstore_json["parent_uuids"] = parent_uuids
         dockstore_json["workflow_type"] = self.workflow_type
+        dockstore_json["launch_type"] = 'workflow'
         dockstore_json["tmpdir"] = self.tmp_dir
         dockstore_json["vm_instance_type"] = self.vm_instance_type
         dockstore_json["vm_region"] = self.vm_region
