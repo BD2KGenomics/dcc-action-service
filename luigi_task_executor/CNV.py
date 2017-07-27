@@ -429,19 +429,30 @@ class CNVCoordinator(luigi.Task):
 
 
                                 if specimen_type == 'Normal':
-                                    cnv_jobs['samples'][sample_name]['NORMAL_BAM'] = {"class" : "File", "path" : file_path}
+                                    if 'normal_bams' not in cnv_jobs['samples'][sample_name].keys():
+                                        cnv_jobs['samples'][sample_name]['normal_bams'] = defaultdict(dict)
+                                    cnv_jobs['samples'][sample_name]['normal_bams'][specimen_type]['input_json'] = {"class" : "File", "path" : file_path}
+
+                                    if 'parent_uuids' not in cnv_jobs['samples'][sample_name]['normal_bams'][specimen_type].keys():
+                                        cnv_jobs['samples'][sample_name]['normal_bams'][specimen_type]["parent_uuids"] = []
+                                
+                                    if sample["sample_uuid"] not in cnv_jobs['samples'][sample_name]['normal_bams'][specimen_type]["parent_uuids"]: 
+                                        cnv_jobs['samples'][sample_name]['normal_bams'][specimen_type]["parent_uuids"].append(sample["sample_uuid"])
+
                                 elif (specimen_type == 'Baseline' or specimen_type == 'Progression') and file_path.endswith('.bam'):
+
                                     if 'tumor_bams' not in cnv_jobs['samples'][sample_name].keys():
                                         cnv_jobs['samples'][sample_name]['tumor_bams'] = defaultdict(dict)
-                                    cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type] = {"class" : "File", "path" : file_path}
+                                    cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]['input_json'] = {"class" : "File", "path" : file_path}
+
+                                    if 'parent_uuids' not in cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type].keys():
+                                        cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]["parent_uuids"] = []
+                                
+                                    if sample["sample_uuid"] not in cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]["parent_uuids"]: 
+                                        cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]["parent_uuids"].append(sample["sample_uuid"])
+
                                 else:
                                     print("ERROR in spinnaker input!!!", file=sys.stderr)
-
-                                if 'parent_uuids' not in cnv_jobs['samples'][sample_name].keys():
-                                    cnv_jobs['samples'][sample_name]["parent_uuids"] = []
-                                
-                                if sample["sample_uuid"] not in cnv_jobs['samples'][sample_name]["parent_uuids"]: 
-                                    cnv_jobs['samples'][sample_name]["parent_uuids"].append(sample["sample_uuid"])
 
 
                             #This metadata will be passed to the Consonance Task and some
@@ -477,17 +488,24 @@ class CNVCoordinator(luigi.Task):
                 print("ERROR: no tumor BAM files for sample {}".format(sample_name))
                 continue
 
-            if 'NORMAL_BAM' not in cnv_jobs['samples'][sample_name].keys():
+            if 'normal_bams' not in cnv_jobs['samples'][sample_name].keys():
                 print("ERROR: no normal BAM file for sample {}".format(sample_name))
                 continue
 
             #get the JSON dict describing either Progression or Baseline
             #and schedule a job for each with the Normal BAM which is already set up
             print('tumor bams:{}'.format(cnv_jobs['samples'][sample_name]['tumor_bams']))
+            print('normal bams:{}'.format(cnv_jobs['samples'][sample_name]['normal_bams']))
 
-            for specimen_type, tumor_bam_json in cnv_jobs['samples'][sample_name]['tumor_bams'].iteritems():
-                print('tumor bam json:{}'.format(tumor_bam_json))
-                cnv_jobs['samples'][sample_name]['TUMOR_BAM'] = tumor_bam_json
+            cnv_jobs['samples'][sample_name]['NORMAL_BAM'] = cnv_jobs['samples'][sample_name]['normal_bams']['Normal']['input_json']
+
+            for specimen_type, value  in cnv_jobs['samples'][sample_name]['tumor_bams'].iteritems():
+                print("specimen type:{}".format(specimen_type))
+                cnv_jobs['samples'][sample_name]['TUMOR_BAM'] = cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]['input_json']
+                cnv_jobs['samples'][sample_name]['parent_uuids'] = \
+                    cnv_jobs['samples'][sample_name]['normal_bams']['Normal']['parent_uuids'] + \
+                    cnv_jobs['samples'][sample_name]['tumor_bams'][specimen_type]['parent_uuids']
+
                 cnv_jobs['samples'][sample_name]['ADTEX_OUTCNV'] = sample_name + '_' + specimen_type + '_ADTEX.cnv'
                 cnv_jobs['samples'][sample_name]['VARSCAN_OUTCNV'] = sample_name + '_' + specimen_type + '_VARSCAN.cnv'
                 full_touch_file_path = touch_file_path + "_" + sample_name + "_" + specimen_type
