@@ -68,7 +68,6 @@ PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module ProtectTask ProtectCoordinato
 PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module CNV CNVCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.16" --workflow-version "master" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project WCDT --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_CNV_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_CNV_decider_stderr.txt
 
 
-
 #These are log file messages used for testing: 
 
 #echo -e "\n\n"
