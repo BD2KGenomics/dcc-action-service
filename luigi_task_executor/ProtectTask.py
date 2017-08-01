@@ -328,6 +328,10 @@ class ProtectCoordinator(luigi.Task):
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
 
+    center = luigi.Parameter(default = "")
+    program = luigi.Parameter(default = "")
+    project = luigi.Parameter(default = "")
+
     def requires(self):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
 
@@ -418,7 +422,13 @@ class ProtectCoordinator(luigi.Task):
             print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
             print("Got %d specimens:" % len(hit["_source"]["specimen"]))
 
-            if(hit["_source"]["program"] != "PROTECT_NBL"):
+            #if a particular center, program or project is requested for processing and
+            #the current one  does not match go on to the next sample
+            if self.center and (self.center != hit["_source"]["center_name"]):
+                continue
+            if self.program and (self.program != hit["_source"]["program"]):
+                continue
+            if self.project and (self.project != hit["_source"]["project"]):
                 continue
 
             for specimen in hit["_source"]["specimen"]:
