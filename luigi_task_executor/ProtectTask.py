@@ -400,6 +400,8 @@ class ProtectCoordinator(luigi.Task):
         #Get the reference file metadata from the storage system
         #and create a file path that the Dockstore tool runner can
         #used to download the reference file from the storage system
+        #TODO fix this because there can be different files with 
+        #the same name in the storage system?
         for switch, file_name in reference_cwl_switch_to_file.iteritems():
             print("switch:{} file name {}".format(switch, file_name))
             file_name_metadata_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName="+file_name), context=ctx).read()
@@ -409,7 +411,7 @@ class ProtectCoordinator(luigi.Task):
             file_uuid = file_name_metadata["content"][0]["id"]
             file_name = file_name_metadata["content"][0]["fileName"]
 
-            ref_file_path = 'redwood' + '/' + bundle_uuid + '/' + \
+            ref_file_path = 'redwood' + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
                         file_uuid + "/" + file_name
             protect_jobs['hg38_reference_files'][switch] = {"class" : "File", "path" : ref_file_path}
             print(str(protect_jobs['hg38_reference_files'][switch]))
@@ -484,7 +486,7 @@ class ProtectCoordinator(luigi.Task):
                                 #if (file["file_type"] != "fastq" or
                                 #    file["file_type"] != "fastq.gz"):
 
-                                file_path = 'redwood' + '/' + analysis['bundle_uuid'] + '/' + \
+                                file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
                                     self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
                                     "/" + file["file_path"]
 
