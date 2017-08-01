@@ -338,7 +338,7 @@ class CNVCoordinator(luigi.Task):
             file_uuid = file_name_metadata["content"][0]["id"]
             file_name = file_name_metadata["content"][0]["fileName"]
 
-            ref_file_path = 'redwood' + '/' + bundle_uuid + '/' + \
+            ref_file_path = 'redwood' + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
                         file_uuid + "/" + file_name
             cnv_jobs['reference_files'][switch] = {"class" : "File", "path" : ref_file_path}
             print(str(cnv_jobs['reference_files'][switch]))
@@ -419,7 +419,7 @@ class CNVCoordinator(luigi.Task):
                                 #if (file["file_type"] != "fastq" or
                                 #    file["file_type"] != "fastq.gz"):
 
-                                file_path = 'redwood' + '/' + analysis['bundle_uuid'] + '/' + \
+                                file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
                                     self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
                                     "/" + file["file_path"]
 
