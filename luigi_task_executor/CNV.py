@@ -247,7 +247,7 @@ class CNVCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgp.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.14")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.17")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
