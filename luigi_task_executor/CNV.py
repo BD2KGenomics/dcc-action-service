@@ -291,8 +291,8 @@ class CNVCoordinator(luigi.Task):
         # now query elasticsearch
         print("setting up elastic search Elasticsearch([\"http:\/\/"+self.es_index_host+":"+self.es_index_port+"]")
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
-        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_cnv_workflow" : "false"}}, \
-                        {"term" : {"flags.tumor_cnv_workflow" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
+        res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags.normal_cnv_workflow_1_0_x" : "false"}}, \
+                        {"term" : {"flags.tumor_cnv_workflow_1_0_x" : "false" }}],"minimum_should_match" : 1 }}}, size=5000)
         # see jqueryflag_alignment_qc
         # curl -XPOST http://localhost:9200/analysis_index/_search?pretty -d @jqueryflag_alignment_qc
 
@@ -384,12 +384,12 @@ class CNVCoordinator(luigi.Task):
  
                         if ( (analysis["analysis_type"] == "alignment" and \
                               ((
-                                #hit["_source"]["flags"]["normal_cnv_workflow"] == False and \
-                                #   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_cnv_workflow"] and \
+                                hit["_source"]["flags"]["normal_cnv_workflow_1_0_x"] == False and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["normal_cnv_workflow_1_0_x"] and \
                                    re.match("^Normal - ", specimen["submitter_specimen_type"])) or \
                                (
-                                #hit["_source"]["flags"]["tumor_cnv_workflow"] == False and \
-                                #   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_cnv_workflow"] and \
+                                hit["_source"]["flags"]["tumor_cnv_workflow_1_0_x"] == False and \
+                                   sample["sample_uuid"] in hit["_source"]["missing_items"]["tumor_cnv_workflow_1_0_x"] and \
                                    re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]))))):
 
 
@@ -397,8 +397,7 @@ class CNVCoordinator(luigi.Task):
                                 print("\nfile type:"+file["file_type"])
                                 print("\nfile name:"+file["file_path"])
 
-                                #if (file["file_type"] != "fastq" or
-                                #    file["file_type"] != "fastq.gz"):
+                                #if (file["file_type"] != "bam"): output an error message?
 
                                 file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
                                     self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
@@ -456,7 +455,7 @@ class CNVCoordinator(luigi.Task):
                             #cnv_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
                             #cnv_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
                             cnv_jobs['samples'][sample_name]["analysis_type"] = "cnv_variant_calling"
-                            cnv_jobs['samples'][sample_name]["workflow_name"] = "quay.io/BD2KGenomics/dockstore_workflow_cnv"
+                            cnv_jobs['samples'][sample_name]["workflow_name"] = "https://dockstore.org/workflows/BD2KGenomics/dockstore_workflow_cnv"
                             cnv_jobs['samples'][sample_name]["workflow_version"] = self.workflow_version
 
                             print("\nCNV jobs with meta data:", cnv_jobs)
