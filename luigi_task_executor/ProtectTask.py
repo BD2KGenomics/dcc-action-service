@@ -134,6 +134,32 @@ class ConsonanceTask(luigi.Task):
         json_dict["reference_build"] = "hg38"
         json_dict["mail_to"] = "jqpublic@myschool.edu"
 
+        json_dict["binding_predictions"] = [{"class" : "File", "path" : '/tmp/binding_predictions.tar'}]
+        json_dict["expression"] = [{"class" : "File", "path" : "/tmp/expression.tar"}]
+        json_dict["haplotyping"] = [{"class" : "File", "path" : "/tmp/haplotyping.tar"}]
+        json_dict["merged_perchrom"] = [{"class" : "File", "path" : '/tmp/merged_perchrom.tar'}]
+        json_dict['muse_perchrom'] = [{"class" : "File", "path" : '/tmp/muse_perchrom.tar'}]
+        json_dict['mutect_perchrom'] = [{"class" : "File", "path" : '/tmp/mutect_perchrom.tar'}]
+        json_dict['peptides'] = [{"class" : "File", "path" : '/tmp/peptides.tar'}]
+        json_dict['radia_perchrom'] = [{"class" : "File", "path" : '/tmp/radia_perchrom.tar'}]
+        json_dict['somaticsniper_perchrom'] = [{"class" : "File", "path" : '/tmp/somaticsniper_perchrom.tar'}]
+        json_dict['strelka_snv_perchrom'] = [{"class" : "File", "path" : '/tmp/strelka_snv_perchrom.tar'}]
+        json_dict['strelka_indel_perchrom'] = [{"class" : "File", "path" : '/tmp/strelka_indel_perchrom.tar'}]
+        json_dict['rankboost'] = [{"class" : "File", "path" : '/tmp/rankboost.tar'}]
+        json_dict['reports'] = [{"class" : "File", "path" : '/tmp/reports.tar'}]
+        json_dict['normal_alignment'] = [{"class" : "File", "path" : '/tmp/normal_dna_fix_pg_sorted.bam'}]
+        json_dict['normal_index'] = [{"class" : "File", "path" : '/tmp/normal_dna_fix_pg_sorted.bam.bai'}]
+        json_dict['tumor_alignment'] = [{"class" : "File", "path" : '/tmp/tumor_dna_fix_pg_sorted.bam'}]
+        json_dict['tumor_index'] = [{"class" : "File", "path" : '/tmp/tumor_dna_fix_pg_sorted.bam.bai'}]
+        json_dict['rna_alignment'] = [{"class" : "File", "path" : '/tmp/rna_fix_pg_sorted.bam'}]
+        json_dict['rna_index'] = [{"class" : "File", "path" : '/tmp/rna_fix_pg_sorted.bam.bai'}]
+        json_dict['rna_transcriptome_alignment'] = [{"class" : "File", "path" : '/tmp/rna_transcriptome.bam'}]
+        json_dict['all_merged'] = [{"class" : "File", "path" : '/tmp/all_merged.vcf'}]
+        json_dict['mhci_merged'] = [{"class" : "File", "path" : '/tmp/mhci_merged_files_concise_results.tsv'}]
+        json_dict['mhcii_merged'] = [{"class" : "File", "path" : '/tmp/mhcii_merged_files_concise_results.tsv'}]
+        json_dict['all_snpeffed'] = [{"class" : "File", "path" : '/tmp/all_snpeffed.vcf'}]
+        json_dict['all_transgened'] = [{"class" : "File", "path" : '/tmp/all_transgened.vcf'}]
+
         protect_reference_files = json.loads(self.protect_reference_files_json)
 
         for option, reference_files_dict in protect_reference_files.iteritems():
