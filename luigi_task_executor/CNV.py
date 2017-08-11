@@ -137,6 +137,9 @@ class ConsonanceTask(luigi.Task):
         #use only one parent uuid even though inputs are from more than one bundle?
         #Do this now until file browser code fixed so that it won't 
         #display duplicate workflow outputs
+        #parent_uuids = ','.join(map("{0}".format, cnv_job['parent_uuids']))
+        #print("parent uuids:%s" % parent_uuids)
+        #dockstore_json["parent_uuids"] = parent_uuids
         dockstore_json["parent_uuids"] = cnv_job['parent_uuids'][0]
 
         dockstore_json["workflow_type"] = self.workflow_type
