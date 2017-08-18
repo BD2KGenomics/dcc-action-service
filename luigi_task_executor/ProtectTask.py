@@ -36,7 +36,7 @@ class ConsonanceTask(luigi.Task):
 
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.17")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
 
     workflow_version = luigi.Parameter(default="must be defined")
 
@@ -87,10 +87,6 @@ class ConsonanceTask(luigi.Task):
 
     def run(self):
         print("\n\n\n** TASK RUN **")
-        #get a unique id for this task based on the some inputs
-        #this id will not change if the inputs are the same
-#        task_uuid = self.get_task_uuid()
-
 #        print "** MAKE TEMP DIR **"
         # create a unique temp dir
         local_json_dir = "/tmp/" + self.touch_file_path
@@ -134,6 +130,32 @@ class ConsonanceTask(luigi.Task):
         json_dict["reference_build"] = "hg38"
         json_dict["mail_to"] = "jqpublic@myschool.edu"
 
+        json_dict["binding_predictions"] = [{"class" : "File", "path" : '/tmp/binding_predictions.tar'}]
+        json_dict["expression"] = [{"class" : "File", "path" : "/tmp/expression.tar"}]
+        json_dict["haplotyping"] = [{"class" : "File", "path" : "/tmp/haplotyping.tar"}]
+        json_dict["merged_perchrom"] = [{"class" : "File", "path" : '/tmp/merged_perchrom.tar'}]
+        json_dict['muse_perchrom'] = [{"class" : "File", "path" : '/tmp/muse_perchrom.tar'}]
+        json_dict['mutect_perchrom'] = [{"class" : "File", "path" : '/tmp/mutect_perchrom.tar'}]
+        json_dict['peptides'] = [{"class" : "File", "path" : '/tmp/peptides.tar'}]
+        json_dict['radia_perchrom'] = [{"class" : "File", "path" : '/tmp/radia_perchrom.tar'}]
+        json_dict['somaticsniper_perchrom'] = [{"class" : "File", "path" : '/tmp/somaticsniper_perchrom.tar'}]
+        json_dict['strelka_snv_perchrom'] = [{"class" : "File", "path" : '/tmp/strelka_snv_perchrom.tar'}]
+        json_dict['strelka_indel_perchrom'] = [{"class" : "File", "path" : '/tmp/strelka_indel_perchrom.tar'}]
+        json_dict['rankboost'] = [{"class" : "File", "path" : '/tmp/rankboost.tar'}]
+        json_dict['reports'] = [{"class" : "File", "path" : '/tmp/reports.tar'}]
+        json_dict['normal_alignment'] = [{"class" : "File", "path" : '/tmp/normal_dna_fix_pg_sorted.bam'}]
+        json_dict['normal_index'] = [{"class" : "File", "path" : '/tmp/normal_dna_fix_pg_sorted.bam.bai'}]
+        json_dict['tumor_alignment'] = [{"class" : "File", "path" : '/tmp/tumor_dna_fix_pg_sorted.bam'}]
+        json_dict['tumor_index'] = [{"class" : "File", "path" : '/tmp/tumor_dna_fix_pg_sorted.bam.bai'}]
+        json_dict['rna_alignment'] = [{"class" : "File", "path" : '/tmp/rna_genome_sorted.bam'}]
+        json_dict['rna_index'] = [{"class" : "File", "path" : '/tmp/rna_genome_sorted.bam.bai'}]
+        json_dict['rna_transcriptome_alignment'] = [{"class" : "File", "path" : '/tmp/rna_transcriptome.bam'}]
+        json_dict['all_merged'] = [{"class" : "File", "path" : '/tmp/all_merged.vcf'}]
+        json_dict['mhci_merged'] = [{"class" : "File", "path" : '/tmp/mhci_rankboost_concise_results.tsv'}]
+        json_dict['mhcii_merged'] = [{"class" : "File", "path" : '/tmp/mhcii_rankboost_concise_results.tsv'}]
+        json_dict['all_snpeffed'] = [{"class" : "File", "path" : '/tmp/all_snpeffed.vcf'}]
+        json_dict['all_transgened'] = [{"class" : "File", "path" : '/tmp/all_transgened.vcf'}]
+
         protect_reference_files = json.loads(self.protect_reference_files_json)
 
         for option, reference_files_dict in protect_reference_files.iteritems():
@@ -157,10 +179,7 @@ class ConsonanceTask(luigi.Task):
         print("** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **")
 
         # create a json for dockstoreRunningDockstoreTool, embed the  JSON as a param
-# below used to be a list of parent UUIDs; which is correct????
-#            "parent_uuids": "[%s]",
         parent_uuids = ','.join(map("{0}".format, protect_job['parent_uuids']))
-
         print("parent uuids:%s" % parent_uuids)
 
         p = self.save_dockstore_json().open('w')
@@ -175,7 +194,17 @@ class ConsonanceTask(luigi.Task):
         dockstore_json["dockstore_url" ] = self.target_tool_url
         dockstore_json["redwood_token" ] = self.redwood_token
         dockstore_json["redwood_host"] = self.redwood_host
-        dockstore_json["parent_uuids"] = parent_uuids
+
+        #dockstore_json["parent_uuids"] = parent_uuids
+        #use only one parent uuid so the output metatdata
+        #is only present once in the final metadata
+        #this will ensure the output is presented only
+        #once in the file browser
+        #also since the pipeline input specifies the 
+        #sample uniquely it doesn't matter which input
+        #the output metadata is attached to
+        dockstore_json["parent_uuids"] = protect_job['parent_uuids'][0]
+
         dockstore_json["workflow_type"] = self.workflow_type
         dockstore_json["tmpdir"] = self.tmp_dir
         dockstore_json["vm_instance_type"] = "c4.8xlarge"
@@ -184,24 +213,6 @@ class ConsonanceTask(luigi.Task):
         dockstore_json["vm_instance_cores"] = 36
         dockstore_json["vm_instance_mem_gb"] = 60
         dockstore_json["output_metadata_json"] = "/tmp/final_metadata.json"
-
-#        dockstore_json_str = '''{
-#            "program_name": "%s",
-#            "json_encoded": "%s",
-#            "docker_uri": "%s",
-#            "dockstore_url": "%s",
-#            "redwood_token": "%s",
-#            "redwood_host": "%s",
-#            "parent_uuids": "%s",
-#            "workflow_type": "%s",
-#            "tmpdir": "%s",
-#            "vm_instance_type": "c4.8xlarge",
-#            "vm_region": "%s",
-#            "vm_location": "aws",
-#            "vm_instance_cores": 36,
-#            "vm_instance_mem_gb": 60,
-#            "output_metadata_json": "/tmp/final_metadata.json"
-#        }''' % (meta_data["program"].replace(' ','_'), base64_json_str, target_tool, self.target_tool_url, self.redwood_token, self.redwood_host, parent_uuids, self.workflow_type, self.tmp_dir, self.vm_region )
 
         dockstore_json_str = json.dumps(dockstore_json , sort_keys=True, indent=4, separators=(',', ': '))
         print(dockstore_json_str, file=p)
@@ -215,7 +226,6 @@ class ConsonanceTask(luigi.Task):
         # execute consonance run, parse the job UUID
 
         #cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
-
         cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
@@ -284,26 +294,22 @@ class ConsonanceTask(luigi.Task):
     def save_metadata_json(self):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/metadata.json' % (self.tmp_dir, task_uuid))
-        #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/metadata.json' % ( task_uuid))
         return S3Target('s3://%s/%s_meta_data.json' % (self.touch_file_path, self.sample_name ))
 
     def save_dockstore_json_local(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
-        #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
         #return S3Target('%s/%s_dockstore_tool.json' % (self.touch_file_path, self.submitter_sample_id ))
         return luigi.LocalTarget('/tmp/%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
 
     def save_dockstore_json(self):
         #task_uuid = self.get_task_uuid()
         #luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/dockstore_tool.json' % (self.tmp_dir, task_uuid))
-        #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/dockstore_tool.json' % ( task_uuid))
         return S3Target('s3://%s/%s_dockstore_tool.json' % (self.touch_file_path, self.sample_name ))
 
     def output(self):
         #task_uuid = self.get_task_uuid()
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/fastq_gz/%s/finished.txt' % (self.tmp_dir, task_uuid))
-        #return S3Target('s3://cgl-core-analysis-run-touch-files/consonance-jobs/RNASeq_3_1_x_Coordinator/%s/finished.txt' % ( task_uuid))
         return S3Target('s3://%s/%s_finished.json' % (self.touch_file_path, self.sample_name ))
 
 
@@ -314,7 +320,7 @@ class ProtectCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgp.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.17")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
