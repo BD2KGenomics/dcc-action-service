@@ -116,6 +116,14 @@ COPY RNA-Seq.py .
 RUN chown ubuntu:ubuntu RNA-Seq.py
 RUN chmod a+x RNA-Seq.py
 
+COPY CNV.py . 
+RUN chown ubuntu:ubuntu CNV.py
+RUN chmod a+x CNV.py
+
+COPY Protect.py . 
+RUN chown ubuntu:ubuntu Protect.py
+RUN chmod a+x Protect.py
+
 #allow ubuntu (and all other users) to execute sudo without a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
