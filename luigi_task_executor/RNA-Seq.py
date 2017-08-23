@@ -41,7 +41,7 @@ class ConsonanceTask(luigi.Task):
     image_descriptor = luigi.Parameter("must be defined")
 
     disable_cutadapt = luigi.Parameter(default="false")
-    save_bam = luigi.Parameter(default="false")
+    save_bam = luigi.Parameter(default="true")
     save_wiggle = luigi.Parameter(default="false")
     no_clean = luigi.Parameter(default="true")
     resume = luigi.Parameter(default="")
