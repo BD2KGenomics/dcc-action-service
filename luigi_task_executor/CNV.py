@@ -60,6 +60,7 @@ class ConsonanceTask(luigi.Task):
     cnv_reference_files_json = luigi.Parameter(default="must input reference file metadata")
 
     touch_file_path = luigi.Parameter(default='must input touch file path')
+    metadata_json_file_name = luigi.Parameter(default='must input metadata json file name')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
@@ -451,12 +452,12 @@ class CNVCoordinator(luigi.Task):
                                 cnv_jobs['samples'][sample_name]["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
                             else:
                                 cnv_jobs['samples'][sample_name]["submitter_donor_primary_site"] = "not provided"
-                            #cnv_jobs['samples'][sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
-                            #cnv_jobs['samples'][sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
+                            cnv_jobs['samples'][sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
+                            cnv_jobs['samples'][sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
                             cnv_jobs['samples'][sample_name]["submitter_specimen_type"] = specimen["submitter_specimen_type"]
                             cnv_jobs['samples'][sample_name]["submitter_experimental_design"] = specimen["submitter_experimental_design"]
-                            #cnv_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
-                            #cnv_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
+                            cnv_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
+                            cnv_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
                             cnv_jobs['samples'][sample_name]["analysis_type"] = "cnv_variant_calling"
                             cnv_jobs['samples'][sample_name]["workflow_name"] = "https://dockstore.org/workflows/BD2KGenomics/dockstore_workflow_cnv"
                             cnv_jobs['samples'][sample_name]["workflow_version"] = self.workflow_version
@@ -525,6 +526,7 @@ class CNVCoordinator(luigi.Task):
                     print("\nreference files meta data:")
                     print(cnv_reference_files_json)
 
+                    metadata_json_file_name = sample_name + "_" + specimen_type + '_meta_data.json'
 
                     listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, \
                         vm_instance_type=self.vm_instance_type,
@@ -539,6 +541,7 @@ class CNVCoordinator(luigi.Task):
                         #submitter_sample_id = cnv_jobs['samples'][sample_name]['submitter_sample_id'], \
                         cnv_job_json = cnv_job_json, \
                         cnv_reference_files_json = cnv_reference_files_json, \
+                        metadata_json_file_name = metadata_json_file_name, \
                         touch_file_path = full_touch_file_path, test_mode=self.test_mode))
 
             
