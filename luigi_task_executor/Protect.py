@@ -36,7 +36,7 @@ class ConsonanceTask(luigi.Task):
 
     redwood_host = luigi.Parameter("storage.ucsc-cgl.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.19")
 
     workflow_version = luigi.Parameter(default="must be defined")
 
@@ -48,6 +48,7 @@ class ConsonanceTask(luigi.Task):
     image_descriptor = luigi.Parameter("must be defined")
 
     vm_region = luigi.Parameter(default='us-west-2')
+    vm_instance_type = luigi.Parameter(default='c4.8xlarge')
 
     ''' 
     #so these aren't actually optional, but i can hardcode a path as default
@@ -81,6 +82,7 @@ class ConsonanceTask(luigi.Task):
     protect_reference_files_json = luigi.Parameter(default="must input reference file metadata")
 
     touch_file_path = luigi.Parameter(default='must input touch file path')
+    metadata_json_file_name = luigi.Parameter(default='must input metadata json file name')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
@@ -207,7 +209,7 @@ class ConsonanceTask(luigi.Task):
 
         dockstore_json["workflow_type"] = self.workflow_type
         dockstore_json["tmpdir"] = self.tmp_dir
-        dockstore_json["vm_instance_type"] = "c4.8xlarge"
+        dockstore_json["vm_instance_type"] = self.vm_instance_type
         dockstore_json["vm_region"] = self.vm_region
         dockstore_json["vm_location"] = "aws"
         dockstore_json["vm_instance_cores"] = 36
@@ -226,7 +228,7 @@ class ConsonanceTask(luigi.Task):
         # execute consonance run, parse the job UUID
 
         #cmd = ["consonance", "run", "--image-descriptor", self.image_descriptor, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
-        cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, "--flavour", "c4.8xlarge", "--run-descriptor", self.save_dockstore_json_local().path]
+        cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, "--flavour", self.vm_instance_type, "--run-descriptor", self.save_dockstore_json_local().path]
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
             print("** SUBMITTING TO CONSONANCE **")
@@ -320,7 +322,7 @@ class ProtectCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgp.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.19")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
@@ -330,6 +332,7 @@ class ProtectCoordinator(luigi.Task):
     touch_file_bucket = luigi.Parameter(default="must be input")
 
     vm_region = luigi.Parameter(default='us-west-2')
+    vm_instance_type = luigi.Parameter(default='c4.8xlarge')
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
@@ -537,12 +540,12 @@ class ProtectCoordinator(luigi.Task):
                                 protect_jobs['samples'][sample_name]["submitter_donor_primary_site"] = hit["_source"]["submitter_donor_primary_site"]
                             else:
                                 protect_jobs['samples'][sample_name]["submitter_donor_primary_site"] = "not provided"
-                            #protect_jobs['samples'][sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
-                            #protect_jobs['samples'][sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
+                            protect_jobs['samples'][sample_name]["submitter_specimen_id"] = specimen["submitter_specimen_id"]
+                            protect_jobs['samples'][sample_name]["specimen_uuid"] = specimen["specimen_uuid"]
                             protect_jobs['samples'][sample_name]["submitter_specimen_type"] = specimen["submitter_specimen_type"]
                             protect_jobs['samples'][sample_name]["submitter_experimental_design"] = specimen["submitter_experimental_design"]
-                            #protect_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
-                            #protect_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
+                            protect_jobs['samples'][sample_name]["submitter_sample_id"] = sample["submitter_sample_id"]
+                            protect_jobs['samples'][sample_name]["sample_uuid"] = sample["sample_uuid"]
                             protect_jobs['samples'][sample_name]["analysis_type"] = "immuno_target_pipelines"
                             protect_jobs['samples'][sample_name]["workflow_name"] = "quay.io/ucsc_cgl/protect"
                             protect_jobs['samples'][sample_name]["workflow_version"] = self.workflow_version
@@ -561,9 +564,12 @@ class ProtectCoordinator(luigi.Task):
                 print("\nprotect reference files meta data:")
                 print(protect_reference_files_json)
 
+                metadata_json_file_name = sample_name + '_meta_data.json' 
+
 
                 listOfJobs.append(ConsonanceTask(redwood_host=self.redwood_host, \
                     vm_region = self.vm_region, \
+                    vm_instance_type=self.vm_instance_type,
                     redwood_token=self.redwood_token, \
                     image_descriptor=self.image_descriptor, \
                     dockstore_tool_running_dockstore_tool=self.dockstore_tool_running_dockstore_tool, \
@@ -573,6 +579,7 @@ class ProtectCoordinator(luigi.Task):
                     #submitter_sample_id = protect_jobs['samples'][sample_name]['submitter_sample_id'], \
                     protect_job_json = protect_job_json, \
                     protect_reference_files_json = protect_reference_files_json, \
+                    metadata_json_file_name = metadata_json_file_name, \
                     touch_file_path = touch_file_path, test_mode=self.test_mode))
 
             
@@ -598,7 +605,7 @@ class ProtectCoordinator(luigi.Task):
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
         #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/RNASeqTask-%s.txt' % (self.tmp_dir, ts_str))
         workflow_version_dir = self.workflow_version.replace('.', '_')
-        return S3Target('s3://'+self.touch_file_bucket+'/consonance-jobs/ProTECT_Coordinator/{}/ProtectTask-{}.txt'.format(workflow_version_dir, ts_str))
+        return S3Target('s3://'+self.touch_file_bucket+'/consonance-jobs/ProTECT_Coordinator/{}/Protect-{}.txt'.format(workflow_version_dir, ts_str))
 
     def fileToUUID(self, input, bundle_uuid):
         return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]

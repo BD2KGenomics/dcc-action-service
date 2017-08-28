@@ -29,7 +29,7 @@ import boto
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgp.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.19")
 
     workflow_version = luigi.Parameter(default="must be defined")
 
@@ -80,6 +80,7 @@ class ConsonanceTask(luigi.Task):
     submitter_sample_id = luigi.Parameter(default='must input submitter sample id')
     meta_data_json = luigi.Parameter(default="must input metadata")
     touch_file_path = luigi.Parameter(default='must input touch file path')
+    metadata_json_file_name = luigi.Parameter(default='must input metadata json file name')
 
     vm_region = luigi.Parameter(default='us-east-1')
 
@@ -459,7 +460,7 @@ class RNASeqCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.18")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.19")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
@@ -654,6 +655,7 @@ class RNASeqCoordinator(luigi.Task):
                             #touch_file_path = ''.join(touch_file_path.split())
 
                             submitter_sample_id = sample["submitter_sample_id"]
+                            metadata_json_file_name = submitter_sample_id + '_meta_data.json' 
 
                             #This metadata will be passed to the Consonance Task and some
                             #some of the meta data will be used in the Luigi status page for the job
@@ -786,6 +788,7 @@ class RNASeqCoordinator(luigi.Task):
                                          paired_filenames=paired_files, paired_file_uuids = paired_file_uuids, paired_bundle_uuids = paired_bundle_uuids, \
                                          tar_filenames=tar_files, tar_file_uuids = tar_file_uuids, tar_bundle_uuids = tar_bundle_uuids, \
                                          tmp_dir=self.tmp_dir, submitter_sample_id = submitter_sample_id, meta_data_json = meta_data_json, \
+                                         metadata_json_file_name = metadata_json_file_name, \
                                          touch_file_path = touch_file_path, workflow_version = self.workflow_version, test_mode = self.test_mode))
 
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
