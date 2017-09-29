@@ -389,62 +389,6 @@ class base_Coordinator(luigi.Task):
                         # remove all whitespace from touch file path
                         #touch_file_path = ''.join(touch_file_path.split())
 
-
-                        #Edit the following lines to set up the pipeline tool/workflow CWL options 
-                        ######################CUSTOMIZE JSON INPUT FOR PIPELINE START################################### 
-                        cgp_pipeline_job_json = self.get_pipeline_parameterized_json(cgp_pipeline_job_metadata, analysis)
-                        '''
-                        cgp_pipeline_job_json = defaultdict()
-
-                        for file in analysis["workflow_outputs"]:
-                            print("\nfile type:"+file["file_type"])
-                            print("\nfile name:"+file["file_path"])
-
-                            #if (file["file_type"] != "bam"): output an error message?
-
-                            file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
-                                self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
-                                "/" + file["file_path"]
-
-                            if 'fastq1' not in cgp_pipeline_job_json.keys():
-                                cgp_pipeline_job_json['fastq1'] = defaultdict(dict)
-                                cgp_pipeline_job_json['fastq1'] = {"class" : "File", "path" : file_path}
-                            elif 'fastq2' not in cgp_pipeline_job_json.keys():
-                                cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
-                                cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
-                            else:
-                                print("ERROR: too many input files!!!", file=sys.stderr)
-
-                            if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
-                                cgp_pipeline_job_metadata["parent_uuids"] = []
-                            
-                            if sample["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
-                                cgp_pipeline_job_metadata["parent_uuids"].append(sample["sample_uuid"])
-
-                        cgp_pipeline_job_json["outputdir"] = '.'
-                        cgp_pipeline_job_json["root-ownership"] = True
-
-                        # Specify the output files here, using the options in the CWL file as keys
-                        file_path = "/tmp/star-fusion-gene-list-filtered.final"
-                        cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
-                        file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
-                        cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
-                        file_path = "/tmp/star-fusion-non-filtered.final"
-                        cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
-                        file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
-                        cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
-                        '''
-                        ####################CUSTOMIZE JSON INPUT FOR PIPELINE END#######################################
-
-                        #attach reference file json to pipeline job json
-                        cgp_pipeline_job_json.update(cgp_jobs_reference_files)
-                        print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
-                        print("\nCGP pipeline job json:{}".format(cgp_pipeline_job_json))
-
-                        #attach the workflow or tool parameterized json to the job metadata
-                        cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
-                        print("\nCGP pipeline job metadata:{}".format(cgp_pipeline_job_metadata))
-
                         if (  (
                                   #Most pipelines work only on a certain data format 
                                   #For instance Fusion and RNA-Seq pipelines work only on uploaded sequences
@@ -453,8 +397,6 @@ class base_Coordinator(luigi.Task):
                                   #Most pipelines work only on specially  prepared data
                                   #For example the Fusion pipeline works only on RNA-Seq prepared data
                                   (re.match("^" + cgp_pipeline_job_metadata["input_data_experimental_design"] + "$", specimen["submitter_experimental_design"]))
-                                  # some storage system data has bad experimental design string so we may have to includ this: 
-                                  #or re.match("^scRNA-Seq$", specimen["submitter_experimental_design"]))
                               ) 
                               and \
                               (
@@ -469,6 +411,62 @@ class base_Coordinator(luigi.Task):
                               )
                            ):
 
+
+                            #Edit the following lines to set up the pipeline tool/workflow CWL options 
+                            ######################CUSTOMIZE JSON INPUT FOR PIPELINE START################################### 
+                            cgp_pipeline_job_json = self.get_pipeline_parameterized_json(cgp_pipeline_job_metadata, analysis)
+                            '''
+                            cgp_pipeline_job_json = defaultdict()
+    
+                            for file in analysis["workflow_outputs"]:
+                                print("\nfile type:"+file["file_type"])
+                                print("\nfile name:"+file["file_path"])
+    
+                                #if (file["file_type"] != "bam"): output an error message?
+    
+                                file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
+                                    self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
+                                    "/" + file["file_path"]
+    
+                                if 'fastq1' not in cgp_pipeline_job_json.keys():
+                                    cgp_pipeline_job_json['fastq1'] = defaultdict(dict)
+                                    cgp_pipeline_job_json['fastq1'] = {"class" : "File", "path" : file_path}
+                                elif 'fastq2' not in cgp_pipeline_job_json.keys():
+                                    cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
+                                    cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
+                                else:
+                                    print("ERROR: too many input files!!!", file=sys.stderr)
+    
+                                if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
+                                    cgp_pipeline_job_metadata["parent_uuids"] = []
+                                
+                                if sample["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
+                                    cgp_pipeline_job_metadata["parent_uuids"].append(sample["sample_uuid"])
+    
+                            cgp_pipeline_job_json["outputdir"] = '.'
+                            cgp_pipeline_job_json["root-ownership"] = True
+    
+                            # Specify the output files here, using the options in the CWL file as keys
+                            file_path = "/tmp/star-fusion-gene-list-filtered.final"
+                            cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
+                            file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
+                            cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
+                            file_path = "/tmp/star-fusion-non-filtered.final"
+                            cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
+                            file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
+                            cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
+                            '''
+                            ####################CUSTOMIZE JSON INPUT FOR PIPELINE END#######################################
+    
+                            #attach reference file json to pipeline job json
+                            cgp_pipeline_job_json.update(cgp_jobs_reference_files)
+                            print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
+                            print("\nCGP pipeline job json:{}".format(cgp_pipeline_job_json))
+    
+                            #attach the workflow or tool parameterized json to the job metadata
+                            cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
+                            print("\nCGP pipeline job metadata:{}".format(cgp_pipeline_job_metadata))
+    
                             #attach this jobs metadata to a list of all the jobs metadata
                             cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
                             print("\nCGP all pipeline jobs meta data:{}".format(cgp_all_pipeline_jobs_metadata))
