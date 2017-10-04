@@ -65,7 +65,7 @@ class FusionCoordinator(base_Coordinator):
                 cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
                 cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
             else:
-                print("ERROR: too many input files!!!", file=sys.stderr)
+                print("ERROR: Too many input files for Fusion pipeline in analysis output; extra file is:{}!!!".format(file_path), file=sys.stderr)
 
             if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
                 cgp_pipeline_job_metadata["parent_uuids"] = []
@@ -86,9 +86,13 @@ class FusionCoordinator(base_Coordinator):
             file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
             cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
 
-        return cgp_pipeline_job_json
-
-
+        if 'fastq1' not in cgp_pipeline_job_json.keys() or 'fastq2' not in cgp_pipeline_job_json.keys():
+            #we must have paired end reads for the Fusion pipeline so return an empty
+            #list to indicate an error if we get here
+            print("\nERROR: UNABLE TO GET BOTH FASTQ FILES FOR FUSION PIPELINE; INCOMPLETE JSON IS:{}".format(cgp_pipeline_job_json) , file=sys.stderr)
+            return [];
+        else:
+            return cgp_pipeline_job_json
 
 
 if __name__ == '__main__':

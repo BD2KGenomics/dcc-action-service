@@ -457,19 +457,24 @@ class base_Coordinator(luigi.Task):
                             cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
                             '''
                             ####################CUSTOMIZE JSON INPUT FOR PIPELINE END#######################################
-    
-                            #attach reference file json to pipeline job json
-                            cgp_pipeline_job_json.update(cgp_jobs_reference_files)
-                            print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
-                            print("\nCGP pipeline job json:{}".format(cgp_pipeline_job_json))
-    
-                            #attach the workflow or tool parameterized json to the job metadata
-                            cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
-                            print("\nCGP pipeline job metadata:{}".format(cgp_pipeline_job_metadata))
-    
-                            #attach this jobs metadata to a list of all the jobs metadata
-                            cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
-                            print("\nCGP all pipeline jobs meta data:{}".format(cgp_all_pipeline_jobs_metadata))
+      
+                            #If the derived pipeline code was unable to construct valid parameterized
+                            #pipeline JSON input file the list will be empty   
+                            if cgp_pipeline_job_json:
+                                #attach reference file json to pipeline job json
+                                cgp_pipeline_job_json.update(cgp_jobs_reference_files)
+                                print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
+                                print("\nCGP pipeline job json:{}".format(cgp_pipeline_job_json))
+        
+                                #attach the workflow or tool parameterized json to the job metadata
+                                cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
+                                print("\nCGP pipeline job metadata:{}".format(cgp_pipeline_job_metadata))
+        
+                                #attach this jobs metadata to a list of all the jobs metadata
+                                cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
+                                print("\nCGP all pipeline jobs meta data:{}".format(cgp_all_pipeline_jobs_metadata))
+                            else:
+                                print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(cgp_pipeline_job_metadata) , file=sys.stderr)
 
         return cgp_all_pipeline_jobs_metadata
 
