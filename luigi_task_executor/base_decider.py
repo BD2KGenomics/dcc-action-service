@@ -238,7 +238,7 @@ class base_Coordinator(luigi.Task):
     program = luigi.Parameter(default = "")
     project = luigi.Parameter(default = "")
 
-    pipeline_name = luigi.Parameter(default="Fusion")
+    pipeline_name = luigi.Parameter(default="must input pipeline name")
 
     #Classes derived from this class must implement this method
     #E.g.
@@ -294,17 +294,14 @@ class base_Coordinator(luigi.Task):
 
                     for analysis in sample["analysis"]:
                         #print analysis
-                        print("HIT!!!! " + analysis["analysis_type"] + " " + str(hit["_source"]["flags"]["normal_sequence"]) 
-                              + " " + str(hit["_source"]["flags"]["tumor_sequence"]) + " " 
-                              + specimen["submitter_specimen_type"]+" "+str(specimen["submitter_experimental_design"]))
-
+                        print("HIT!!!!")
+                        print("analysis type:{}".format(analysis["analysis_type"]))
+                        print("normal flag:{}".format(str(hit["_source"]["flags"]["normal_sequence"])))
+                        print("tumor flag:{}".format(str(hit["_source"]["flags"]["tumor_sequence"])))
 
                         for output in analysis["workflow_outputs"]:
-                            print(output)
-
-                        print("hit flags normal:{}".format(hit["_source"]["flags"]["normal_fusion_workflow_0_2_x"]))
-                        print("sample normal uuid:{}".format(sample["sample_uuid"] in hit["_source"]["present_items"]["normal_fusion_workflow_0_2_x"]))
-
+                            json_str = json.dumps(output, sort_keys=True, indent=4, separators=(',', ': '))
+                            print(json_str)
 
                         #This metadata will be passed to the Consonance Task and some
                         #some of the meta data will be used in the Luigi status page for the job
@@ -350,8 +347,7 @@ class base_Coordinator(luigi.Task):
                         cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] = cgp_pipeline_job_metadata["submitter_sample_id"]
                         '''
                         ######################CUSTOMIZE METADATA FOR PIPELINE END################################## 
-
-
+         
 
                          #The action service monitor looks for 'workflow_name' when it inserts the job data into its DB
                         cgp_pipeline_job_metadata["workflow_name"] = cgp_pipeline_job_metadata["target_tool_prefix"]
@@ -388,6 +384,9 @@ class base_Coordinator(luigi.Task):
                         #i.e. the program name is two words separated by blanks?
                         # remove all whitespace from touch file path
                         #touch_file_path = ''.join(touch_file_path.split())
+           
+                        json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': ')) 
+                        print("HIT metadata:\n{}".format(json_str))
 
                         if (  (
                                   #Most pipelines work only on a certain data format 
@@ -464,17 +463,22 @@ class base_Coordinator(luigi.Task):
                                 #attach reference file json to pipeline job json
                                 cgp_pipeline_job_json.update(cgp_jobs_reference_files)
                                 print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
-                                print("\nCGP pipeline job json:{}".format(cgp_pipeline_job_json))
+
+                                json_str = json.dumps(cgp_pipeline_job_json, sort_keys=True, indent=4, separators=(',', ': '))
+                                #print("\nCGP pipeline job json:\n{}".format(json_str))
         
                                 #attach the workflow or tool parameterized json to the job metadata
                                 cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
-                                print("\nCGP pipeline job metadata:{}".format(cgp_pipeline_job_metadata))
+                                json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                #print("\nCGP pipeline job metadata:\n{}".format(json_str))
         
                                 #attach this jobs metadata to a list of all the jobs metadata
                                 cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
-                                print("\nCGP all pipeline jobs meta data:{}".format(cgp_all_pipeline_jobs_metadata))
+                                json_str = json.dumps(cgp_all_pipeline_jobs_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                #print("\nCGP all pipeline jobs meta data:\n{}".format(json_str))
                             else:
-                                print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(cgp_pipeline_job_metadata) , file=sys.stderr)
+                                json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(json_str) , file=sys.stderr)
 
         return cgp_all_pipeline_jobs_metadata
 
@@ -514,7 +518,7 @@ class base_Coordinator(luigi.Task):
             file_name_metadata = json.loads(file_name_metadata_json)
             if file_name_metadata['totalElements'] == 0:
                 print('ERROR: could not find reference file in storage system!')
-            print("reference file:{}".format(str(file_name_metadata)))
+            print("reference file metadata:\n{}".format(str(file_name_metadata)))
             bundle_uuid = file_name_metadata["content"][0]["gnosId"]
             file_uuid = file_name_metadata["content"][0]["id"]
             file_name = file_name_metadata["content"][0]["fileName"]
@@ -522,7 +526,9 @@ class base_Coordinator(luigi.Task):
             ref_file_path = 'redwood' + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
                         file_uuid + "/" + file_name
             cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ref_file_path}
-            print(str(cgp_jobs_reference_files[switch]))
+
+            json_str = json.dumps(cgp_jobs_reference_files[switch], sort_keys=True, indent=4, separators=(',', ': '))
+            print("Reference files json:\n{}".format(json_str))
 
 
         cgp_jobs_fixed_metadata = self.get_pipeline_job_fixed_metadata()
@@ -540,8 +546,6 @@ class base_Coordinator(luigi.Task):
 
         for job_num, job in enumerate(cgp_pipeline_jobs_metadata):
             print('job num:{}'.format(job_num))
-            print('job:{}'.format(job))
-
             if (job_num < int(self.max_jobs) or int(self.max_jobs) < 0):
                 cgp_pipeline_job_metadata_str = json.dumps(job, sort_keys=True, indent=4, separators=(',', ': '))
                 print("\npipeline job metadata:")
@@ -581,7 +585,6 @@ class base_Coordinator(luigi.Task):
         # the final report
         ts = time.time()
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
-        #return luigi.LocalTarget('%s/consonance-jobs/RNASeq_3_1_x_Coordinator/RNASeqTask-%s.txt' % (self.tmp_dir, ts_str))
         workflow_version_dir = self.workflow_version.replace('.', '_')
         return S3Target('s3://'+ self.touch_file_bucket + '/consonance-jobs/{}_Coordinator/{}/{}-{}.txt'.format( \
                                   self.pipeline_name, workflow_version_dir, self.pipeline_name, ts_str))
