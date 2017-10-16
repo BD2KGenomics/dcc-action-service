@@ -238,13 +238,21 @@ class base_Coordinator(luigi.Task):
     program = luigi.Parameter(default = "")
     project = luigi.Parameter(default = "")
 
-    pipeline_name = luigi.Parameter(default="must input pipeline name")
+    #Classes derived from this class must implement these methods
+    '''
+    Return a string that is the name that will be used to name the touchfile path
 
-    #Classes derived from this class must implement this method
-    #E.g.
-    def get_cgp_job_reference_files(self):
-        raise NotImplementedError('You need to define a get_cgp_job_reference_files method!') 
-        '''
+    E.g.:
+        return 'Fusion'
+    '''
+    def get_pipeline_name(self):
+        raise NotImplementedError('You need to define a get_pipeline_name method!')
+
+    '''
+    Return a dictionary of CWL option to reference file name so this information
+    can be added to the parameterized JSON input to the pipeline
+
+    E.g.:
         cwl_option_to_reference_file_name = defaultdict()
 
         ######################CUSTOMIZE REFERENCE FILES FOR PIPELINE START####################### 
@@ -252,19 +260,99 @@ class base_Coordinator(luigi.Task):
         ######################CUSTOMIZE REFERENCE FILES FOR PIPELINE END####################### 
 
         return cwl_option_to_reference_file_name
-        '''
+    '''
+    def get_cgp_job_reference_files(self):
+        raise NotImplementedError('You need to define a get_cgp_job_reference_files method!') 
+
+    '''
+    Returns a dictionary of keyword used in the dockstore tool runner parameterized JSON
+    and used in Elastic search to find needed samples. The JSON data does not depend
+    on samples found in the Elastic search so can be added here
+    '''
     def get_pipeline_job_fixed_metadata(self):
         raise NotImplementedError('You need to define a get_pipeline_job_fixed_metadata method!')
 
+    '''
+    Returns a dictionary of keywords to metadata that is used to setup the touch file path
+    and metadata and dockstore JSON file names. These sometimes depend on the sample name
+    or other information found through the Elastic search so is separated from the method
+    that gets the fixed metadata. This routine adds to the metadata dictionary for the pipeline.
+     
+    E.g
+
+       ###########################CUSTOMIZE METADATA FOR PIPELINE  START#########################
+       #The items below are usually customized for a particular workflow or tool
+
+       #launch type is either 'workflow' or 'tool'
+       cgp_pipeline_job_metadata["launch_type"] = "tool"
+       cgp_pipeline_job_metadata["analysis_type"] = "fusion_variant_calling"
+       cgp_pipeline_job_metadata['metadata_json_file_name'] = cgp_pipeline_job_metadata['file_prefix'] + '_meta_data.json'
+       cgp_pipeline_job_metadata["target_tool_prefix"] = 'registry.hub.docker.com/ucsctreehouse/fusion'
+       cgp_pipeline_job_metadata["target_tool_url"] = \
+               "https://dockstore.org/containers/registry.hub.docker.com/ucsctreehouse/fusion/"
+       cgp_pipeline_job_metadata['file_prefix'] = sample["submitter_sample_id"]
+       cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] = cgp_pipeline_job_metadata["submitter_sample_id"]
+
+       ######################CUSTOMIZE METADATA FOR PIPELINE END################################## 
+    '''
     def get_pipeline_job_customized_metadata(self, cgp_pipeline_job_metadata):
         raise NotImplementedError('You need to define a get_pipeline_customized_metadata method!')
 
+    '''
+    Returns a dictionary of CWL keywords and values that make up the CWL input parameterized
+    JSON for the pipeline. This is the input to the pipeline to be run from Dockstore. 
+
+    E.g:
+            #Edit the following lines to set up the pipeline tool/workflow CWL options 
+            ######################CUSTOMIZE JSON INPUT FOR PIPELINE START################################### 
+
+            cgp_pipeline_job_json = defaultdict()
+    
+            for file in analysis["workflow_outputs"]:
+                print("\nfile type:"+file["file_type"])
+                print("\nfile name:"+file["file_path"])
+    
+                #if (file["file_type"] != "bam"): output an error message?
+    
+                file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
+                    self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
+                    "/" + file["file_path"]
+    
+                if 'fastq1' not in cgp_pipeline_job_json.keys():
+                    cgp_pipeline_job_json['fastq1'] = defaultdict(dict)
+                    cgp_pipeline_job_json['fastq1'] = {"class" : "File", "path" : file_path}
+                elif 'fastq2' not in cgp_pipeline_job_json.keys():
+                    cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
+                    cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
+                else:
+                    print("ERROR: too many input files!!!", file=sys.stderr)
+    
+                if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
+                    cgp_pipeline_job_metadata["parent_uuids"] = []
+                
+                if sample["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
+                    cgp_pipeline_job_metadata["parent_uuids"].append(sample["sample_uuid"])
+    
+            cgp_pipeline_job_json["outputdir"] = '.'
+            cgp_pipeline_job_json["root-ownership"] = True
+    
+            # Specify the output files here, using the options in the CWL file as keys
+            file_path = "/tmp/star-fusion-gene-list-filtered.final"
+            cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
+            file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
+            cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
+            file_path = "/tmp/star-fusion-non-filtered.final"
+            cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
+            file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
+            cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
+
+            ####################CUSTOMIZE JSON INPUT FOR PIPELINE END#######################################
+
+    ''' 
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis):
         raise NotImplementedError('You need to define a get_pipeline_parameterized_json method!')
 
 
-    #Classes derived from this class must implement this method
-    #E.g.
     def get_cgp_pipeline_jobs_metadata(self, hits, cgp_jobs_fixed_metadata, cgp_jobs_reference_files):
         cgp_all_pipeline_jobs_metadata = []
 
@@ -303,10 +391,9 @@ class base_Coordinator(luigi.Task):
                             json_str = json.dumps(output, sort_keys=True, indent=4, separators=(',', ': '))
                             print(json_str)
 
+                        #put together the metadata and then decide whether the job is to be included in the list of jobs
                         #This metadata will be passed to the Consonance Task and some
                         #some of the meta data will be used in the Luigi status page for the job
-
-                        #put together the metadata and then decide whether the job is to be included in the list of jobs
                         cgp_pipeline_job_metadata = defaultdict()
                         print("constructing pipeline job metadata")    
 
@@ -332,37 +419,26 @@ class base_Coordinator(luigi.Task):
                         cgp_pipeline_job_metadata["workflow_version"] = self.workflow_version
 
 
-                        ###########################CUSTOMIZE METADATA FOR PIPELINE  START#########################
-                        #The items below are usually customized for a particular workflow or tool
+                        #get metadata for the pipeline that depends on the particular sample 
                         cgp_pipeline_job_metadata = self.get_pipeline_job_customized_metadata(cgp_pipeline_job_metadata)
-                        '''
-                        #launch type is either 'workflow' or 'tool'
-                        cgp_pipeline_job_metadata["launch_type"] = "tool"
-                        cgp_pipeline_job_metadata["analysis_type"] = "fusion_variant_calling"
-                        cgp_pipeline_job_metadata['metadata_json_file_name'] = cgp_pipeline_job_metadata['file_prefix'] + '_meta_data.json'
-                        cgp_pipeline_job_metadata["target_tool_prefix"] = 'registry.hub.docker.com/ucsctreehouse/fusion'
-                        cgp_pipeline_job_metadata["target_tool_url"] = \
-                                "https://dockstore.org/containers/registry.hub.docker.com/ucsctreehouse/fusion/"
-                        cgp_pipeline_job_metadata['file_prefix'] = sample["submitter_sample_id"]
-                        cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] = cgp_pipeline_job_metadata["submitter_sample_id"]
-                        '''
-                        ######################CUSTOMIZE METADATA FOR PIPELINE END################################## 
-         
 
-                         #The action service monitor looks for 'workflow_name' when it inserts the job data into its DB
+                        #The action service monitor looks for 'workflow_name' when it inserts the job data into its DB
                         cgp_pipeline_job_metadata["workflow_name"] = cgp_pipeline_job_metadata["target_tool_prefix"]
 
                         workflow_version_dir = self.workflow_version.replace('.', '_')
                         touch_file_path_prefix = self.touch_file_bucket + \
                                    "/consonance-jobs/" +  \
-                                   self.pipeline_name + "_Coordinator/" + workflow_version_dir
+                                   self.get_pipeline_name() + "_Coordinator/" + workflow_version_dir
 
                         touch_file_path = touch_file_path_prefix + "/" \
-                                   + hit["_source"]["center_name"] + "_" \
-                                   + hit["_source"]["program"] + "_" \
-                                   + hit["_source"]["project"] + "_" \
-                                   + cgp_pipeline_job_metadata["last_touch_file_folder_suffix"]
-                                   #sample["submitter_sample_id"]
+                                   + cgp_pipeline_job_metadata["center_name"] + "_" \
+                                   + cgp_pipeline_job_metadata["program"] + "_" \
+                                   + cgp_pipeline_job_metadata["project"] + "_" \
+                                   + cgp_pipeline_job_metadata["submitter_experimental_design"] + "_" \
+                                   + cgp_pipeline_job_metadata["submitter_specimen_id"] + "_" \
+                                   + cgp_pipeline_job_metadata["submitter_sample_id"] + "_" \
+                                   + cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] + "_" \
+                                   + cgp_pipeline_job_metadata["sample_uuid"]
 
                         cgp_pipeline_job_metadata["s3_metadata_json_file_path"] = "s3://" +  \
                                    touch_file_path + "/" + \
@@ -388,6 +464,7 @@ class base_Coordinator(luigi.Task):
                         json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': ')) 
                         print("HIT metadata:\n{}".format(json_str))
 
+                        #If this sample has not already been run through the pipeline add it to the list of jobs
                         if (  (
                                   #Most pipelines work only on a certain data format 
                                   #For instance Fusion and RNA-Seq pipelines work only on uploaded sequences
@@ -410,52 +487,8 @@ class base_Coordinator(luigi.Task):
                               )
                            ):
 
-
-                            #Edit the following lines to set up the pipeline tool/workflow CWL options 
-                            ######################CUSTOMIZE JSON INPUT FOR PIPELINE START################################### 
+                            #get the parameterized JSON that is the input to the pipeline registered in Dockstore
                             cgp_pipeline_job_json = self.get_pipeline_parameterized_json(cgp_pipeline_job_metadata, analysis)
-                            '''
-                            cgp_pipeline_job_json = defaultdict()
-    
-                            for file in analysis["workflow_outputs"]:
-                                print("\nfile type:"+file["file_type"])
-                                print("\nfile name:"+file["file_path"])
-    
-                                #if (file["file_type"] != "bam"): output an error message?
-    
-                                file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
-                                    self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
-                                    "/" + file["file_path"]
-    
-                                if 'fastq1' not in cgp_pipeline_job_json.keys():
-                                    cgp_pipeline_job_json['fastq1'] = defaultdict(dict)
-                                    cgp_pipeline_job_json['fastq1'] = {"class" : "File", "path" : file_path}
-                                elif 'fastq2' not in cgp_pipeline_job_json.keys():
-                                    cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
-                                    cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
-                                else:
-                                    print("ERROR: too many input files!!!", file=sys.stderr)
-    
-                                if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
-                                    cgp_pipeline_job_metadata["parent_uuids"] = []
-                                
-                                if sample["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
-                                    cgp_pipeline_job_metadata["parent_uuids"].append(sample["sample_uuid"])
-    
-                            cgp_pipeline_job_json["outputdir"] = '.'
-                            cgp_pipeline_job_json["root-ownership"] = True
-    
-                            # Specify the output files here, using the options in the CWL file as keys
-                            file_path = "/tmp/star-fusion-gene-list-filtered.final"
-                            cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
-                            file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
-                            cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
-                            file_path = "/tmp/star-fusion-non-filtered.final"
-                            cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
-                            file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
-                            cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
-                            '''
-                            ####################CUSTOMIZE JSON INPUT FOR PIPELINE END#######################################
       
                             #If the derived pipeline code was unable to construct valid parameterized
                             #pipeline JSON input file the list will be empty   
@@ -493,6 +526,7 @@ class base_Coordinator(luigi.Task):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
+        #Go through the metadata and setup the mapping of bundle uuid to file name
         json_str = urlopen(str("https://metadata."+self.redwood_host+"/entities?page=0"), context=ctx).read()
         metadata_struct = json.loads(json_str)
         print("** METADATA TOTAL PAGES: "+str(metadata_struct["totalPages"]))
@@ -503,15 +537,16 @@ class base_Coordinator(luigi.Task):
             for file_hash in metadata_struct["content"]:
                 self.bundle_uuid_filename_to_file_uuid[file_hash["gnosId"]+"_"+file_hash["fileName"]] = file_hash["id"]
 
-        
 
         #Get the reference file metadata from the storage system
         #and create a file path that the Dockstore tool runner can
         #used to download the reference file from the storage system
-
         cgp_jobs_reference_files = defaultdict()
         cwl_option_to_reference_file_name = self.get_cgp_job_reference_files()
 
+        #Go through the reference files for this pipeline and find the bundle uuid
+        #file uuid and file name in the metadata and set up the path to the file 
+        #in the storage system so it can be downloaded when the pipeline is run
         for switch, file_name in cwl_option_to_reference_file_name.iteritems():
             print("switch:{} file name {}".format(switch, file_name))
             file_name_metadata_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName="+file_name), context=ctx).read()
@@ -533,7 +568,7 @@ class base_Coordinator(luigi.Task):
 
         cgp_jobs_fixed_metadata = self.get_pipeline_job_fixed_metadata()
 
-        # now query elasticsearch
+        # now query elasticsearch to find the samples that been run through the pipeline
         print("setting up elastic search Elasticsearch([\"http:\/\/"+self.es_index_host+":"+self.es_index_port+"]")
         es = Elasticsearch([{'host': self.es_index_host, 'port': self.es_index_port}])
         res = es.search(index="analysis_index", body={"query" : {"bool" : {"should" : [{"term" : { "flags." + cgp_jobs_fixed_metadata["normal_metadata_flag"] : "false"}}, \
@@ -543,7 +578,8 @@ class base_Coordinator(luigi.Task):
         cgp_pipeline_jobs_metadata = self.get_cgp_pipeline_jobs_metadata(res['hits']['hits'], cgp_jobs_fixed_metadata, cgp_jobs_reference_files)
 
         listOfJobs = []
-
+        #Go through the list of jobs and if the max number of jobs to run has
+        #not been reached add it to the list of jobs to run
         for job_num, job in enumerate(cgp_pipeline_jobs_metadata):
             print('job num:{}'.format(job_num))
             if (job_num < int(self.max_jobs) or int(self.max_jobs) < 0):
@@ -587,7 +623,7 @@ class base_Coordinator(luigi.Task):
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
         workflow_version_dir = self.workflow_version.replace('.', '_')
         return S3Target('s3://'+ self.touch_file_bucket + '/consonance-jobs/{}_Coordinator/{}/{}-{}.txt'.format( \
-                                  self.pipeline_name, workflow_version_dir, self.pipeline_name, ts_str))
+                                  self.get_pipeline_name(), workflow_version_dir, self.get_pipeline_name(), ts_str))
 
     def fileToUUID(self, input, bundle_uuid):
         return self.bundle_uuid_filename_to_file_uuid[bundle_uuid+"_"+input]
