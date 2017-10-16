@@ -434,7 +434,7 @@ class base_Coordinator(luigi.Task):
                                    + cgp_pipeline_job_metadata["center_name"] + "_" \
                                    + cgp_pipeline_job_metadata["program"] + "_" \
                                    + cgp_pipeline_job_metadata["project"] + "_" \
-                                   + cgp_pipeline_job_metadata["submitter_experimental_design"] + "_" \
+                                   + cgp_pipeline_job_metadata["submitter_donor_primary_site"] + "_" \
                                    + cgp_pipeline_job_metadata["submitter_specimen_id"] + "_" \
                                    + cgp_pipeline_job_metadata["submitter_sample_id"] + "_" \
                                    + cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] + "_" \
