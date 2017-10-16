@@ -5,7 +5,17 @@ from collections import defaultdict
 from base_decider import base_Coordinator
 
 class FusionCoordinator(base_Coordinator):
+
+    '''
+    Return a string that is the name that will be used to name the touchfile path
+    '''
+    def get_pipeline_name(self):
+        return 'Fusion'
    
+    '''
+    Return a dictionary of CWL option to reference file name so this information
+    can be added to the parameterized JSON input to the pipeline
+    '''
     def get_cgp_job_reference_files(self):
         cwl_option_to_reference_file_name = defaultdict()        
 
@@ -14,6 +24,11 @@ class FusionCoordinator(base_Coordinator):
 
         return cwl_option_to_reference_file_name
 
+    '''
+    Returns a dictionary of keyword used in the dockstore tool runner parameterized JSON
+    and used in Elastic search to find needed samples. The JSON data does not depend
+    on samples found in the Elastic search so can be added here
+    '''
     def get_pipeline_job_fixed_metadata(self):
         cgp_pipeline_job_fixed_metadata = defaultdict()
 
@@ -35,16 +50,25 @@ class FusionCoordinator(base_Coordinator):
 
         return cgp_pipeline_job_fixed_metadata
 
-
+    '''
+    Returns a dictionary of keywords to metadata that is used to setup the touch file path
+    and metadata and dockstore JSON file names. These sometimes depend on the sample name
+    or other information found through the Elastic search so is separated from the method
+    that gets the fixed metadata. This routine adds to the metadata dictionary for the pipeline.
+    '''
     def get_pipeline_job_customized_metadata(self, cgp_pipeline_job_metadata):
         cgp_pipeline_job_metadata['file_prefix'] = cgp_pipeline_job_metadata["submitter_sample_id"]
         cgp_pipeline_job_metadata['metadata_json_file_name'] = cgp_pipeline_job_metadata['file_prefix'] + '_meta_data.json'
-        cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] = cgp_pipeline_job_metadata["submitter_sample_id"]
+        cgp_pipeline_job_metadata["last_touch_file_folder_suffix"] = ""
 
         return cgp_pipeline_job_metadata
 
 
-    #Edit the following lines to set up the pipeline tool/workflow CWL options 
+    '''
+    Edit the following lines to set up the pipeline tool/workflow CWL options. This method
+    returns a dictionary of CWL keywords and values that make up the CWL input parameterized
+    JSON for the pipeline. This is the input to the pipeline to be run from Dockstore. 
+    ''' 
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis):
         cgp_pipeline_job_json = defaultdict()
 
@@ -65,7 +89,8 @@ class FusionCoordinator(base_Coordinator):
                 cgp_pipeline_job_json['fastq2'] = defaultdict(dict)
                 cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
             else:
-                print("ERROR: too many input files!!!", file=sys.stderr)
+                print("ERROR: Too many input files for Fusion pipeline in analysis output; extra file is:{}!!!".format(file_path), file=sys.stderr)
+                return [];
 
             if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
                 cgp_pipeline_job_metadata["parent_uuids"] = []
@@ -86,9 +111,13 @@ class FusionCoordinator(base_Coordinator):
             file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
             cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
 
-        return cgp_pipeline_job_json
-
-
+        if 'fastq1' not in cgp_pipeline_job_json.keys() or 'fastq2' not in cgp_pipeline_job_json.keys():
+            #we must have paired end reads for the Fusion pipeline so return an empty
+            #list to indicate an error if we get here
+            print("\nERROR: UNABLE TO GET BOTH FASTQ FILES FOR FUSION PIPELINE; INCOMPLETE JSON IS:{}".format(cgp_pipeline_job_json) , file=sys.stderr)
+            return [];
+        else:
+            return cgp_pipeline_job_json
 
 
 if __name__ == '__main__':
