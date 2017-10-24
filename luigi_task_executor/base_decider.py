@@ -377,7 +377,7 @@ class base_Coordinator(luigi.Task):
 
                     #if a particular sample uuid is requested for processing and
                     #the current sample uuid does not match go on to the next sample
-                    if sample["sample_uuid"] not in self.process_sample_uuids.split():
+                   if self.process_sample_uuid and sample["sample_uuid"] not in self.process_sample_uuids.split():
                         continue
 
                     for analysis in sample["analysis"]:
