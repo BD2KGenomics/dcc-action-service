@@ -124,6 +124,15 @@ COPY Protect.py .
 RUN chown ubuntu:ubuntu Protect.py
 RUN chmod a+x Protect.py
 
+COPY Fusion.py . 
+RUN chown ubuntu:ubuntu Fusion.py
+RUN chmod a+x Fusion.py
+
+COPY base_decider.py . 
+RUN chown ubuntu:ubuntu base_decider.py
+RUN chmod a+x base_decider.py
+
+
 #allow ubuntu (and all other users) to execute sudo without a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
