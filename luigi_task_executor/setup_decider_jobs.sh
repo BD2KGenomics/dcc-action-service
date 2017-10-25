@@ -51,7 +51,14 @@ mkdir -p /home/ubuntu/.dockstore
 dockstore_str=$'token:'"${DOCKSTORE_TOKEN}"$'\nserver-url:'"${DOCKSTORE_SERVER_URL}"
 echo "$dockstore_str" > /home/ubuntu/.dockstore/config
 
-
+#copy the pipeline code and scripts to run them into the mounted host path so 
+#users can easily add new pipelines and modify the existing pipelines
+#the /home/ubuntu/pipeline_deciders directory should be mounted by
+#the docker-compose dcc_ops/action/action_service.yml file
+#this cp should work even if the /home/ubuntu/pipeline_deciders dir does not yet exist
+sudo cp -r /home/ubuntu/pipeline_deciders_and_scripts/. /home/ubuntu/pipeline_deciders
+sudo chown -R ubuntu:ubuntu /home/ubuntu/pipeline_deciders
+ 
 #start the Luigi daemon in the background
 #so the action service that monitors tasks
 #can get information on tasks
