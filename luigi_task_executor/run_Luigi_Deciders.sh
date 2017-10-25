@@ -20,9 +20,9 @@ set -o errexit
 #own PATH so the consonance command and other tools can be found
 #PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin
 
-VIRTUAL_ENV_PATH=/home/ubuntu/luigi_decider_runs/luigienv/bin
-LUIGI_RUNS_PATH=/home/ubuntu/luigi_decider_runs
-DECIDER_SOURCE_PATH=${LUIGI_RUNS_PATH}
+VIRTUAL_ENV_PATH=/home/ubuntu/pipeline_deciders/pipeline_env/bin
+PIPELINE_RUNS_PATH=/home/ubuntu/pipeline_deciders
+DECIDER_SOURCE_PATH=${PIPELINE_RUNS_PATH}
 LOG_FILE_PATH=/home/ubuntu/logs
 mkdir -p ${LOG_FILE_PATH}
 sudo chown -R ubuntu:ubuntu ${LOG_FILE_PATH}
@@ -33,11 +33,11 @@ echo "Starting decider cron job" > ${LOG_FILE_PATH}/cron_decider_log.txt
 echo "getting date" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 now=$(date +"%T")
 
-#mkdir -p ${LUIGI_RUNS_PATH}
+#mkdir -p ${PIPELINE_RUNS_PATH}
 
-echo "cd ${LUIGI_RUNS_PATH}" >> ${LOG_FILE_PATH}/cron_decider_log.txt
+echo "cd ${PIPELINE_RUNS_PATH}" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 #Go into the appropriate folder
-cd "${LUIGI_RUNS_PATH}"
+cd "${PIPELINE_RUNS_PATH}"
 
 echo "source ${VIRTUAL_ENV_PATH}/activate" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 #for some reason set -o nounset thinks activate is an uninitialized variable so turn nounset off
