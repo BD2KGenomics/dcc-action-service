@@ -20,8 +20,8 @@ set -o errexit
 #own PATH so the consonance command and other tools can be found
 #PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin
 
-VIRTUAL_ENV_PATH=/home/ubuntu/pipeline_deciders/pipeline_env/bin
 PIPELINE_RUNS_PATH=/home/ubuntu/pipeline_deciders
+VIRTUAL_ENV_PATH=${PIPELINE_RUNS_PATH}/pipeline_env
 DECIDER_SOURCE_PATH=${PIPELINE_RUNS_PATH}
 LOG_FILE_PATH=/home/ubuntu/logs
 mkdir -p ${LOG_FILE_PATH}
@@ -39,12 +39,15 @@ echo "cd ${PIPELINE_RUNS_PATH}" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 #Go into the appropriate folder
 cd "${PIPELINE_RUNS_PATH}"
 
-echo "source ${VIRTUAL_ENV_PATH}/activate" >> ${LOG_FILE_PATH}/cron_decider_log.txt
-#for some reason set -o nounset thinks activate is an uninitialized variable so turn nounset off
-set +o nounset
-#Activate the virtualenv
-source "${VIRTUAL_ENV_PATH}"/activate
-set -o nounset
+#don't need virtual env right now; but save in case needed later
+#echo "virtualenv ${VIRTUAL_ENV_PATH}" >> ${LOG_FILE_PATH}/cron_decider_log.txt
+#virtualenv ${VIRTUAL_ENV_PATH}
+#echo "source ${VIRTUAL_ENV_PATH}/bin/activate" >> ${LOG_FILE_PATH}/cron_decider_log.txt
+##for some reason set -o nounset thinks activate is an uninitialized variable so turn nounset off
+#set +o nounset
+##Activate the virtualenv
+#source "${VIRTUAL_ENV_PATH}"/bin/activate
+#set -o nounset
 
 
 #start up the Luigi scheduler daemon in case it is not already running
@@ -54,7 +57,7 @@ set -o nounset
 echo "Starting Luigi daemon in the background" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 sudo luigid --background
 
-echo "Running Luigi RNA-Seq decider" >> ${LOG_FILE_PATH}/cron_decider_log.txt
+echo "Running Luigi deciders" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 
 # run the decider
 #use the '--test-mode' switch to skip running Consonance
@@ -98,10 +101,10 @@ PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Fusion FusionCoordinator --do
 
 
 
-
-#for some reason set -o nounset thinks deactivate is an uninitialized variable so turn nounset off
-set +o nounset
-# deactivate virtualenv
-deactivate
-set -o nounset
+#don't need virtual env right now; but save in case needed later
+##for some reason set -o nounset thinks deactivate is an uninitialized variable so turn nounset off
+#set +o nounset
+## deactivate virtualenv
+#deactivate
+#set -o nounset
 

@@ -62,9 +62,6 @@ RUN chown ubuntu:ubuntu consonance-client-"${CONSONANCE_VERSION}".jar
 RUN pip install --upgrade pip
 RUN pip install -U pip setuptools
 
-
-
-
 WORKDIR /tmp
 
 #install Luigi and components for recording Luigi history in case we implement task history
@@ -87,24 +84,14 @@ RUN touch /tmp/decider_log
 RUN chmod 644 /tmp/decider_log
 RUN chown ubuntu:ubuntu /tmp/decider_log
 
-
-
 #get the crontab for ubuntu deciders
 COPY setup_decider_jobs.sh /home/ubuntu/setup_decider_jobs.sh
 RUN chmod a+x /home/ubuntu/setup_decider_jobs.sh
 RUN chown ubuntu:ubuntu /home/ubuntu/setup_decider_jobs.sh
 
-
 #setup the directory from where the Luigi decider scripts will be run
 ENV PIPELINE_RUNS_PATH=/home/ubuntu/pipeline_deciders_and_scripts
 WORKDIR ${PIPELINE_RUNS_PATH}
-RUN chown -R ubuntu:ubuntu ${PIPELINE_RUNS_PATH}
-
-#setup the virtual environment that the Luigi decider
-#crontab script uses
-RUN virtualenv pipeline_env
-ENV VIRTUAL_ENV_PATH=${PIPELINE_RUNS_PATH}/pipline_env/bin
-#make sure ubuntu owns the virtual env path
 RUN chown -R ubuntu:ubuntu ${PIPELINE_RUNS_PATH}
 
 #install the Luigi pipeline decider scripts in the run directory
