@@ -62,9 +62,6 @@ RUN chown ubuntu:ubuntu consonance-client-"${CONSONANCE_VERSION}".jar
 RUN pip install --upgrade pip
 RUN pip install -U pip setuptools
 
-
-
-
 WORKDIR /tmp
 
 #install Luigi and components for recording Luigi history in case we implement task history
@@ -87,25 +84,15 @@ RUN touch /tmp/decider_log
 RUN chmod 644 /tmp/decider_log
 RUN chown ubuntu:ubuntu /tmp/decider_log
 
-
-
 #get the crontab for ubuntu deciders
 COPY setup_decider_jobs.sh /home/ubuntu/setup_decider_jobs.sh
 RUN chmod a+x /home/ubuntu/setup_decider_jobs.sh
 RUN chown ubuntu:ubuntu /home/ubuntu/setup_decider_jobs.sh
 
-
 #setup the directory from where the Luigi decider scripts will be run
-ENV LUIGI_RUNS_PATH=/home/ubuntu/luigi_decider_runs
-WORKDIR ${LUIGI_RUNS_PATH}
-RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
-
-#setup the virtual environment that the Luigi decider
-#crontab script uses
-RUN virtualenv luigienv
-ENV VIRTUAL_ENV_PATH=${LUIGI_RUNS_PATH}/luigienv/bin
-#make sure ubuntu owns the virtual env path
-RUN chown -R ubuntu:ubuntu ${LUIGI_RUNS_PATH}
+ENV PIPELINE_RUNS_PATH=/home/ubuntu/pipeline_deciders_and_scripts
+WORKDIR ${PIPELINE_RUNS_PATH}
+RUN chown -R ubuntu:ubuntu ${PIPELINE_RUNS_PATH}
 
 #install the Luigi pipeline decider scripts in the run directory
 COPY run_Luigi_Deciders.sh .
@@ -124,11 +111,23 @@ COPY Protect.py .
 RUN chown ubuntu:ubuntu Protect.py
 RUN chmod a+x Protect.py
 
+COPY Fusion.py . 
+RUN chown ubuntu:ubuntu Fusion.py
+RUN chmod a+x Fusion.py
+
+COPY base_decider.py . 
+RUN chown ubuntu:ubuntu base_decider.py
+RUN chmod a+x base_decider.py
+
+
 #allow ubuntu (and all other users) to execute sudo without a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 #run everything from now on as ubuntu
 USER ubuntu
+
+#go back to the ubuntu home dir
+WORKDIR /home/ubuntu/
 
 #install AWS cli according to http://docs.aws.amazon.com/cli/latest/userguide/awscli-install-linux.html
 #install as user ubuntu so the cli is on ubuntu's path
