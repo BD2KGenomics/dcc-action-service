@@ -29,7 +29,7 @@ PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/us
 
 #run the decider cron job 'env' that will inject the needed environment variables
 #and run the decider script
-0 * * * * env `cat /home/ubuntu/env_vars` /home/ubuntu/luigi_decider_runs/run_Luigi_Deciders.sh
+0 * * * * env `cat /home/ubuntu/env_vars` /home/ubuntu/pipeline_deciders/run_Luigi_Deciders.sh
 
 #test cron to see if it is working
 #* * * * * echo "cron job executed as $USER!" >> /tmp/decider_log 2>&1
