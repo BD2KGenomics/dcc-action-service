@@ -29,7 +29,7 @@ import boto
 class ConsonanceTask(luigi.Task):
     redwood_host = luigi.Parameter("storage.ucsc-cgp.org")
     redwood_token = luigi.Parameter("must_be_defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22")
 
     workflow_version = luigi.Parameter(default="must be defined")
 
@@ -460,7 +460,7 @@ class RNASeqCoordinator(luigi.Task):
     redwood_token = luigi.Parameter("must_be_defined")
     redwood_host = luigi.Parameter(default='storage.ucsc-cgl.org')
     image_descriptor = luigi.Parameter("must be defined")
-    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21")
+    dockstore_tool_running_dockstore_tool = luigi.Parameter(default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22")
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
