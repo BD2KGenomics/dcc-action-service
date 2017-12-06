@@ -1,0 +1,32 @@
+23:29:44 DEBUG!! run of luigi decider!!!
+executing consonance --version test
+redwood server is storage_server
+redwood token is storage_token
+elastic search server is elastic_search_server
+elastic search port is elastic_search_port
+touch file directory is touch_file_directory
+executing java -version test
+23:37:43 DEBUG!! run of luigi decider!!!
+executing consonance --version test
+redwood server is storage_server
+redwood token is storage_token
+elastic search server is elastic_search_server
+elastic search port is elastic_search_port
+touch file directory is touch_file_directory
+executing java -version test
+23:45:11 DEBUG!! run of luigi decider!!!
+executing consonance --version test
+redwood server is storage_server
+redwood token is storage_token
+elastic search server is elastic_search_server
+elastic search port is elastic_search_port
+touch file directory is touch_file_directory
+executing java -version test
+00:47:45 DEBUG!! run of luigi decider!!!
+executing consonance --version test
+redwood server is storage_server
+redwood token is storage_token
+elastic search server is elastic_search_server
+elastic search port is elastic_search_port
+touch file directory is touch_file_directory
+executing java -version test

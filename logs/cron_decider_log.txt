@@ -1,0 +1,5 @@
+Starting decider cron job
+getting date
+cd /home/ubuntu/pipeline_deciders
+Starting Luigi daemon in the background
+Running Luigi RNA-Seq decider

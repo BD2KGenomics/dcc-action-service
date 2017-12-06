@@ -1,0 +1,36 @@
+version: '2'
+
+services:
+  dcc-action-service:
+    environment:
+      ES_SERVICE: "elasticsearch1"
+      ES_DOMAIN: "elasticsearch1"
+      ES_PORT: "9200"
+      ES_PROTOCOL: "http"
+      ES_DONOR_INDEX: "analysis_index"
+    build:
+      context: ./luigi_task_executor
+      dockerfile: Dockerfile_decider
+    ports:
+      - "9000:80"
+    networks:
+      - esnet
+    volumes:
+      - ~/dcc-action-service/logs:/home/ubuntu/logs
+      - ~/dcc-action-service/pipeline_deciders:/home/ubuntu/pipeline_deciders
+
+  elasticsearch1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.3
+    container_name: "elasticsearch1"
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+    ports:
+       - "9200:9200"
+       - "9300:9300"
+    networks:
+      - esnet
+
+networks:
+  esnet:
+    driver: bridge    
