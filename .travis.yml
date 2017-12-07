@@ -1,0 +1,17 @@
+sudo: required
+
+services:
+ - docker
+
+language: python
+
+before_install:
+ - sudo apt-get update
+ - git clone https://github.com/jnkrupp/dcc-action-service.git
+ - cd dcc-action-service
+ - git checkout feature/add-travisci
+script:
+# - sudo docker-compose -f docker-compose.yml up --build -d
+# - sudo docker-compose -f docker-compose.yml down
+ - make testme
+

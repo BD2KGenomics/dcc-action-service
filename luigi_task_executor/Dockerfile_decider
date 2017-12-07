@@ -111,7 +111,7 @@ COPY Protect.py .
 RUN chown ubuntu:ubuntu Protect.py
 RUN chmod a+x Protect.py
 
-COPY Fusion.py . 
+COPY Fusion.py .
 RUN chown ubuntu:ubuntu Fusion.py
 RUN chmod a+x Fusion.py
 
@@ -119,9 +119,16 @@ COPY base_decider.py .
 RUN chown ubuntu:ubuntu base_decider.py
 RUN chmod a+x base_decider.py
 
+COPY test/ /app/test
+RUN chown -R ubuntu:ubuntu /app/test
+RUN chmod -R a+x /app/test
+
 
 #allow ubuntu (and all other users) to execute sudo without a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+#install pip
+RUN pip install -U pytest
 
 #run everything from now on as ubuntu
 USER ubuntu
@@ -136,10 +143,10 @@ RUN python3 get-pip.py --user
 RUN pip install awscli --upgrade --user
 ENV PATH /home/ubuntu/.local/bin:$PATH
 
-
 CMD ["/home/ubuntu/setup_decider_jobs.sh"]
 
 # Run the command on container startup in test mode
 #CMD sudo cron && sudo tail -f /tmp/decider_log
 ##CMD sudo cron && sudo tail -f /var/log/cron.log
 
+WORKDIR /app/

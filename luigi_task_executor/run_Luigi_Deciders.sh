@@ -62,14 +62,15 @@ echo "Running Luigi deciders" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 # run the decider
 #use the '--test-mode' switch to skip running Consonance
 #This will be the new run commmand:
-PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22" --workflow-version "3.3.4-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --program Treehouse --tmp-dir /datastore --test-mode > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "3.3.4-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --program Treehouse --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
 #Run the ProTECT decider:
-PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Protect ProtectCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22" --workflow-version "2.5.5-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project TARGET --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_Protect_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_Protect_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Protect ProtectCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "2.5.5-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project TARGET --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_Protect_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_Protect_decider_stderr.txt
 
-PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module CNV CNVCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22" --workflow-version "v1.0.0" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project WCDT --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_CNV_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_CNV_decider_stderr.txt
 
-PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Fusion FusionCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22" --workflow-version "0.2.1" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "r4.8xlarge" --vm-region ${AWS_REGION} --program Fusion --tmp-dir /datastore --test-mode > "${LOG_FILE_PATH}"/cron_log_Fusion_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_Fusion_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module CNV CNVCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "v1.0.0" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project WCDT --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_CNV_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_CNV_decider_stderr.txt
+
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Fusion FusionCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "0.2.1" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --program Fusion --tmp-dir /datastore --test-mode --use-local-storage > "${LOG_FILE_PATH}"/cron_log_Fusion_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_Fusion_decider_stderr.txt
 
 #execute commands to run addtional deciders in the extra folder
 #if [ -f ${DECIDER_SOURCE_PATH}/extra/run_addtional_deciders.sh ]
@@ -79,20 +80,20 @@ PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Fusion FusionCoordinator --do
 
 #These are log file messages used for testing: 
 
-#echo -e "\n\n"
-#echo "${now} DEBUG!! run of luigi decider!!!" >> ${LOG_FILE_PATH}/logfile.txt
-#echo "executing consonance --version test" >> ${LOG_FILE_PATH}/logfile.txt
+echo -e "\n\n"
+echo "${now} DEBUG!! run of luigi decider!!!" >> ${LOG_FILE_PATH}/logfile.txt
+echo "executing consonance --version test" >> ${LOG_FILE_PATH}/logfile.txt
 #consonance --version >> ${LOG_FILE_PATH}/logfile.txt
 
-#echo "redwood server is ${STORAGE_SERVER}" >> ${LOG_FILE_PATH}/logfile.txt
-#echo "redwood token is ${STORAGE_ACCESS_TOKEN}" >> ${LOG_FILE_PATH}/logfile.txt
+echo "redwood server is ${STORAGE_SERVER}" >> ${LOG_FILE_PATH}/logfile.txt
+echo "redwood token is ${STORAGE_ACCESS_TOKEN}" >> ${LOG_FILE_PATH}/logfile.txt
 
-#echo "elastic search server is ${ELASTIC_SEARCH_SERVER}" >> ${LOG_FILE_PATH}/logfile.txt
-#echo "elastic search port is ${ELASTIC_SEARCH_PORT}" >> ${LOG_FILE_PATH}/logfile.txt
+echo "elastic search server is ${ELASTIC_SEARCH_SERVER}" >> ${LOG_FILE_PATH}/logfile.txt
+echo "elastic search port is ${ELASTIC_SEARCH_PORT}" >> ${LOG_FILE_PATH}/logfile.txt
 
-#echo "touch file directory is ${TOUCH_FILE_DIRECTORY}" >> ${LOG_FILE_PATH}/logfile.txt
+echo "touch file directory is ${TOUCH_FILE_DIRECTORY}" >> ${LOG_FILE_PATH}/logfile.txt
 
-#echo "executing java -version test" >> ${LOG_FILE_PATH}/logfile.txt
+echo "executing java -version test" >> ${LOG_FILE_PATH}/logfile.txt
 #java -version >> ${LOG_FILE_PATH}/logfile.txt 2>&1
 
 #echo "executing aws test" >> ${LOG_FILE_PATH}/logfile.txt

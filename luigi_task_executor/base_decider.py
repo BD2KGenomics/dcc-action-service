@@ -48,6 +48,9 @@ class ConsonanceTask(luigi.Task):
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
 
+    #Use local storage for TravisCI testing
+    use_local_storage = luigi.BoolParameter(default = True)
+
     def run(self):
         print("\n\n\n** TASK RUN **")
 
@@ -199,17 +202,23 @@ class ConsonanceTask(luigi.Task):
         print("\n\n\n\n** TASK RUN DONE **")
 
     def save_metadata_json(self):
+        if(self.use_local_storage == True):
+            return luigi.LocalTarget(self.s3_metadata_json_file_path)
         return S3Target(self.s3_metadata_json_file_path)
 
-    def save_dockstore_tool_runner_json_local(self):
+    def save_dockstore_tool_runner_json_local(self): 
         return luigi.LocalTarget(self.local_dockstore_tool_runner_json_file_path)
 
     def save_dockstore_tool_runner_json(self):
+        if(self.use_local_storage == True):
+            return luigi.LocalTarget(self.s3_dockstore_tool_runner_json_file_path) 
         return S3Target(self.s3_dockstore_tool_runner_json_file_path)
 
     def output(self):
 #        return S3Target(self.s3_finished_json_file_path)
 #        print("output target:{}".format("s3://" + self.touch_file_path + "/" +  self.file_prefix + "_finished.json"))
+        if(self.use_local_storage == True):
+            return luigi.LocalTarget("s3://" + self.touch_file_path + "/" +  self.file_prefix + "_finished.json")
         return S3Target("s3://" + self.touch_file_path + "/" +  self.file_prefix + "_finished.json")
 
 
@@ -233,6 +242,9 @@ class base_Coordinator(luigi.Task):
 
     #Consonance will not be called in test mode
     test_mode = luigi.BoolParameter(default = False)
+
+    #Use local storage for TravisCI testing
+    use_local_storage = luigi.BoolParameter(default = True)
 
     center = luigi.Parameter(default = "")
     program = luigi.Parameter(default = "")
@@ -598,7 +610,8 @@ class base_Coordinator(luigi.Task):
                     metadata_json_file_name = job['metadata_json_file_name'],
                     touch_file_path = job['touch_file_path'],
                     file_prefix = job['file_prefix'],
-                    test_mode=self.test_mode))
+                    test_mode=self.test_mode,
+                    use_local_storage=self.use_local_storage))
 
             
         print("total of {} jobs; max jobs allowed is {}\n\n".format(str(len(listOfJobs)), self.max_jobs))
@@ -622,6 +635,9 @@ class base_Coordinator(luigi.Task):
         ts = time.time()
         ts_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
         workflow_version_dir = self.workflow_version.replace('.', '_')
+        if(self.use_local_storage == True):
+            return luigi.LocalTarget('s3://'+ self.touch_file_bucket + '/consonance-jobs/{}_Coordinator/{}/{}-{}.txt'.format( \
+                                  self.get_pipeline_name(), workflow_version_dir, self.get_pipeline_name(), ts_str)) 
         return S3Target('s3://'+ self.touch_file_bucket + '/consonance-jobs/{}_Coordinator/{}/{}-{}.txt'.format( \
                                   self.get_pipeline_name(), workflow_version_dir, self.get_pipeline_name(), ts_str))
 
