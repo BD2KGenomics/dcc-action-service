@@ -100,6 +100,7 @@ class FusionCoordinator(base_Coordinator):
 
             cgp_pipeline_job_json["outputdir"] = '.'
             cgp_pipeline_job_json["root-ownership"] = True
+            cgp_pipeline_job_json["cpu"] = 32
 
             # Specify the output files here, using the options in the CWL file as keys
             file_path = "/tmp/star-fusion-gene-list-filtered.final"

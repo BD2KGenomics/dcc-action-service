@@ -58,7 +58,7 @@ echo "$dockstore_str" > /home/ubuntu/.dockstore/config
 #this cp should work even if the /home/ubuntu/pipeline_deciders dir does not yet exist
 sudo cp -r /home/ubuntu/pipeline_deciders_and_scripts/. /home/ubuntu/pipeline_deciders
 sudo chown -R ubuntu:ubuntu /home/ubuntu/pipeline_deciders
-
+ 
 #start the Luigi daemon in the background
 #so the action service that monitors tasks
 #can get information on tasks

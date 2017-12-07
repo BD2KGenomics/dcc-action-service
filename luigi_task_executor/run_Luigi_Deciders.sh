@@ -49,13 +49,6 @@ cd "${PIPELINE_RUNS_PATH}"
 #source "${VIRTUAL_ENV_PATH}"/bin/activate
 #set -o nounset
 
-#echo "source ${VIRTUAL_ENV_PATH}/activate" >> ${LOG_FILE_PATH}/cron_decider_log.txt
-#for some reason set -o nounset thinks activate is an uninitialized variable so turn nounset off
-#set +o nounset
-#Activate the virtualenv
-#source "${VIRTUAL_ENV_PATH}"/activate
-#set -o nounset
-
 
 #start up the Luigi scheduler daemon in case it is not already running
 #so we can monitor job status
@@ -64,12 +57,12 @@ cd "${PIPELINE_RUNS_PATH}"
 echo "Starting Luigi daemon in the background" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 sudo luigid --background
 
-echo "Running Luigi RNA-Seq decider" >> ${LOG_FILE_PATH}/cron_decider_log.txt
+echo "Running Luigi deciders" >> ${LOG_FILE_PATH}/cron_decider_log.txt
 
 # run the decider
 #use the '--test-mode' switch to skip running Consonance
 #This will be the new run commmand:
-#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "3.3.4-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --program Treehouse --tmp-dir /datastore  > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
+#PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module RNA-Seq RNASeqCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "3.3.4-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --program Treehouse --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_RNA-Seq_decider_stderr.txt
 
 #Run the ProTECT decider:
 #PYTHONPATH="${DECIDER_SOURCE_PATH}" luigi --module Protect ProtectCoordinator --dockstore-tool-running-dockstore-tool "quay.io/ucsc_cgl/dockstore-tool-runner:1.0.21" --workflow-version "2.5.5-1.12.3" --touch-file-bucket ${TOUCH_FILE_DIRECTORY} --redwood-host ${STORAGE_SERVER} --redwood-token ${STORAGE_ACCESS_TOKEN} --es-index-host ${ELASTIC_SEARCH_SERVER} --es-index-port ${ELASTIC_SEARCH_PORT} --vm-instance-type "c4.8xlarge" --vm-region ${AWS_REGION} --project TARGET --tmp-dir /datastore --test-mode  > "${LOG_FILE_PATH}"/cron_log_Protect_decider_stdout.txt 2> "${LOG_FILE_PATH}"/cron_log_Protect_decider_stderr.txt

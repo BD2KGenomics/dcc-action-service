@@ -232,7 +232,7 @@ class base_Coordinator(luigi.Task):
     tmp_dir = luigi.Parameter(default='/datastore')
     max_jobs = luigi.Parameter(default='-1')
     bundle_uuid_filename_to_file_uuid = {}
-    process_sample_uuid = luigi.Parameter(default = "")
+    process_sample_uuids = luigi.Parameter(default = "")
 
     workflow_version = luigi.Parameter(default="")
     touch_file_bucket = luigi.Parameter(default="must be input")
@@ -389,7 +389,7 @@ class base_Coordinator(luigi.Task):
 
                     #if a particular sample uuid is requested for processing and
                     #the current sample uuid does not match go on to the next sample
-                    if self.process_sample_uuid and (self.process_sample_uuid != sample["sample_uuid"]):
+                    if self.process_sample_uuids and sample["sample_uuid"] not in self.process_sample_uuids.split():
                         continue
 
                     for analysis in sample["analysis"]:
