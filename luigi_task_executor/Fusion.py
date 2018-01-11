@@ -40,12 +40,12 @@ class FusionCoordinator(base_Coordinator):
 
         cgp_pipeline_job_fixed_metadata["input_data_analysis_type"] = "sequence_upload"
         cgp_pipeline_job_fixed_metadata["input_data_experimental_design"] = "RNA-Seq"
-        cgp_pipeline_job_fixed_metadata["normal_missing_item"] = "normal_fusion_workflow_0_2_x" 
-        cgp_pipeline_job_fixed_metadata["normal_present_item"] = "normal_fusion_workflow_0_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_missing_item"] = "tumor_fusion_workflow_0_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_present_item"] = "tumor_fusion_workflow_0_2_x"
-        cgp_pipeline_job_fixed_metadata["normal_metadata_flag"] = "normal_fusion_workflow_0_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_metadata_flag"] = "tumor_fusion_workflow_0_2_x"
+        cgp_pipeline_job_fixed_metadata["normal_missing_item"] = "normal_fusion_workflow_0_3_x" 
+        cgp_pipeline_job_fixed_metadata["normal_present_item"] = "normal_fusion_workflow_0_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_missing_item"] = "tumor_fusion_workflow_0_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_present_item"] = "tumor_fusion_workflow_0_3_x"
+        cgp_pipeline_job_fixed_metadata["normal_metadata_flag"] = "normal_fusion_workflow_0_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_metadata_flag"] = "tumor_fusion_workflow_0_3_x"
 
 
         return cgp_pipeline_job_fixed_metadata
@@ -98,19 +98,13 @@ class FusionCoordinator(base_Coordinator):
             if cgp_pipeline_job_metadata["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
                 cgp_pipeline_job_metadata["parent_uuids"].append(cgp_pipeline_job_metadata["sample_uuid"])
 
-            cgp_pipeline_job_json["outputdir"] = '.'
             cgp_pipeline_job_json["root-ownership"] = True
+            cgp_pipeline_job_json["tar_gz"] = cgp_pipeline_job_metadata["submitter_sample_id"]
             cgp_pipeline_job_json["cpu"] = 32
 
             # Specify the output files here, using the options in the CWL file as keys
-            file_path = "/tmp/star-fusion-gene-list-filtered.final"
-            cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
-            cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-non-filtered.final"
-            cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
-            cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
+            file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["output_files"] = {"class" : "File", "path" : file_path}
 
         if 'fastq1' not in cgp_pipeline_job_json.keys() or 'fastq2' not in cgp_pipeline_job_json.keys():
             #we must have paired end reads for the Fusion pipeline so return an empty
