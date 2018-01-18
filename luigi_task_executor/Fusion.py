@@ -68,7 +68,7 @@ class FusionCoordinator(base_Coordinator):
     Edit the following lines to set up the pipeline tool/workflow CWL options. This method
     returns a dictionary of CWL keywords and values that make up the CWL input parameterized
     JSON for the pipeline. This is the input to the pipeline to be run from Dockstore. 
-    ''' 
+    '''
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis):
         cgp_pipeline_job_json = defaultdict()
 
