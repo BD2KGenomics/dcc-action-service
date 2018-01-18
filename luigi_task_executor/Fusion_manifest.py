@@ -6,6 +6,24 @@ from base_manifest_decider import base_Coordinator
 
 class FusionCoordinator(base_Coordinator):
 
+    def __init__(self, touch_file_bucket, redwood_token, \
+                 redwood_host, dockstore_tool_running_dockstore_tool, \
+                 es_index_host ='localhost', es_index_port ='9200', \
+                 tmp_dir ='/datastore', max_jobs = -1, process_sample_uuids = "", \
+                 workflow_version = "", \
+                 vm_instance_type ='c4.8xlarge', vm_region ='us-west-2', \
+                 test_mode = False, center = "", program = "", project = ""):
+
+
+            base_Coordinator.__init__(self, touch_file_bucket, redwood_token, \
+                 redwood_host, dockstore_tool_running_dockstore_tool, \
+                 es_index_host, es_index_port, \
+                 tmp_dir, max_jobs, process_sample_uuids, \
+                 workflow_version, \
+                 vm_instance_type, vm_region, \
+                 test_mode, center, program, project)
+
+
     '''
     Return a string that is the name that will be used to name the touchfile path
     '''

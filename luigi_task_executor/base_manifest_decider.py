@@ -29,7 +29,7 @@ class ConsonanceTask(object):
 
 #    json_dict = {}
 
-    def __init__(redwood_host, redwood_token, dockstore_tool_running_dockstore_tool, \
+    def __init__(self, redwood_host, redwood_token, dockstore_tool_running_dockstore_tool, \
                  cgp_pipeline_job_metadata_str, touch_file_path, metadata_json_file_name, \
                  workflow_version, file_prefix, vm_instance_type ='c4.8xlarge', \
                  vm_region = 'us-west-2', tmp_dir = '/datastore', test_mode = False):
@@ -288,7 +288,7 @@ class ConsonanceTask(object):
 class base_Coordinator(object):
    
 
-    def __init__(touch_file_bucket, redwood_token, \
+    def __init__(self, touch_file_bucket, redwood_token, \
                  redwood_host, dockstore_tool_running_dockstore_tool, \
                  es_index_host ='localhost', es_index_port ='9200', \
                  tmp_dir ='/datastore', max_jobs = -1, process_sample_uuids = "", \
@@ -492,8 +492,8 @@ class base_Coordinator(object):
                         #print analysis
                         print("HIT!!!!")
                         print("analysis type:{}".format(analysis["analysis_type"]))
-                        print("normal flag:{}".format(str(hit["_source"]["flags"]["normal_sequence"])))
-                        print("tumor flag:{}".format(str(hit["_source"]["flags"]["tumor_sequence"])))
+                        #print("normal flag:{}".format(str(hit["_source"]["flags"]["normal_sequence"])))
+                        #print("tumor flag:{}".format(str(hit["_source"]["flags"]["tumor_sequence"])))
 
                         for output in analysis["workflow_outputs"]:
                             json_str = json.dumps(output, sort_keys=True, indent=4, separators=(',', ': '))
@@ -582,17 +582,19 @@ class base_Coordinator(object):
                                   #For example the Fusion pipeline works only on RNA-Seq prepared data
                                   (re.match("^" + cgp_pipeline_job_metadata["input_data_experimental_design"] + "$", specimen["submitter_experimental_design"]))
                               ) 
-                              and \
-                              (
-                                  (hit["_source"]["flags"][ cgp_pipeline_job_metadata["normal_metadata_flag"] ] == False and \
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"][ cgp_pipeline_job_metadata["normal_missing_item"] ] and \
-                                   re.match("^Normal - ", specimen["submitter_specimen_type"])) 
-                                  or \
-                                  (
-                                   hit["_source"]["flags"][ cgp_pipeline_job_metadata["tumor_metadata_flag"] ] == False and \
-                                   sample["sample_uuid"] in hit["_source"]["missing_items"][ cgp_pipeline_job_metadata["tumor_missing_item"] ] and \
-                                   re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]))
-                              )
+                             
+                              #and \
+                              #(
+                              #    (hit["_source"]["flags"][ cgp_pipeline_job_metadata["normal_metadata_flag"] ] == False and \
+                              #     sample["sample_uuid"] in hit["_source"]["missing_items"][ cgp_pipeline_job_metadata["normal_missing_item"] ] and \
+                              #     re.match("^Normal - ", specimen["submitter_specimen_type"])) 
+                              #    or \
+                              #    (
+                              #     hit["_source"]["flags"][ cgp_pipeline_job_metadata["tumor_metadata_flag"] ] == False and \
+                              #     sample["sample_uuid"] in hit["_source"]["missing_items"][ cgp_pipeline_job_metadata["tumor_missing_item"] ] and \
+                              #     re.match("^Primary tumour - |^Recurrent tumour - |^Metastatic tumour - |^Cell line -", specimen["submitter_specimen_type"]))
+                              #)
+                              
                            ):
 
                             #get the parameterized JSON that is the input to the pipeline registered in Dockstore
@@ -623,7 +625,7 @@ class base_Coordinator(object):
 
         return cgp_all_pipeline_jobs_metadata
 
-    def requires(self):
+    def requires(self, hits):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
 
         # now query the metadata service so I have the mapping of bundle_uuid & file names -> file_uuid
@@ -686,7 +688,8 @@ class base_Coordinator(object):
         print("Got %d Hits:" % res['hits']['total'])
         cgp_pipeline_jobs_metadata = self.get_cgp_pipeline_jobs_metadata(res['hits']['hits'], cgp_jobs_fixed_metadata, cgp_jobs_reference_files)
         '''
-
+        
+        cgp_pipeline_jobs_metadata = self.get_cgp_pipeline_jobs_metadata(hits, cgp_jobs_fixed_metadata, cgp_jobs_reference_files)
 
         listOfJobs = []
         #Go through the list of jobs and if the max number of jobs to run has

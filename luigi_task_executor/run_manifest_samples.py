@@ -12,13 +12,18 @@ import json
 def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid):
     hits = []
     #get the set of files for a sample uuid
-    for sample_files in sample_data_binned_by_sample_uuid.iteritems():
+    for bundle_uuid, sample_files in sample_data_binned_by_sample_uuid.iteritems():
+
+        #print('sample files:{}'.format(sample_files))
+
         workflow_outputs = []
         analysis_element = {}
         sample_element = {}
         specimen_element = {}
         source_element = {}
         for file_info in sample_files:
+
+            #print('file info:{}'.format(file_info))
 
             workflow_outputs_element = {'file_path' : file_info['file_path'], 'file_type' : file_info['file_type']}
             workflow_outputs.append(workflow_outputs_element)
@@ -28,22 +33,14 @@ def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uui
             analysis_element['bundle_uuid'] = file_info['bundle_uuid']
             analysis_element['workflow_name'] = file_info['workflow_name']
             analysis_element['workflow_version'] = file_info['workflow_version']
-        analysis = []
-        analysis.append(analysis_element)
 
-            sample_element['analysis'] = analysis
             sample_element['sample_uuid'] = file_info['sample_uuid']
-            sample_element['submitter_sample_id'] = file_info['submitter_sample_id']i
-        samples = []
-        samples.append(sample_element)
+            sample_element['submitter_sample_id'] = file_info['submitter_sample_id']
  
-            specimen_element['samples'] = samples
             specimen_element['specimen_uuid'] = file_info['specimen_uuid']
             specimen_element['submitter_experimental_design'] = file_info['submitter_experimental_design']
             specimen_element['submitter_specimen_id'] = file_info['submitter_specimen_id']
             specimen_element['submitter_specimen_type'] = file_info['submitter_specimen_type']
-        specimen = []
-        specimen.append(specimen_element)
 
             source_element['center_name'] = file_info['center_name']
             source_element['donor_uuid'] = file_info['donor_uuid']
@@ -52,9 +49,27 @@ def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uui
             source_element['submitter_donor_id'] = file_info['submitter_donor_id']
             source_element['submitter_donor_primary_site'] = file_info['submitter_donor_primary_site']
 
+
+        analysis = []
+        analysis.append(analysis_element)
+        sample_element['analysis'] = analysis
+
+        samples = []
+        samples.append(sample_element)
+        specimen_element['samples'] = samples
+
+        specimen = []
+        specimen.append(specimen_element)
+       
+        source_element['specimen'] = specimen
         hit = {}
-        hit['specimen'] = specimen
         hit['_source'] = source_element
+        hits.append(hit)
+
+    json_str = json.dumps(hits, sort_keys=True, indent=4, separators=(',', ': '))
+    print("create_elastic_search_result_formatted_json - hits json:\n{}".format(json_str))
+ 
+    return hits
 
 
 def get_sample_data_from_manifest(manifest):
@@ -90,8 +105,8 @@ def get_sample_data_from_manifest(manifest):
             sample_uuid_element["metadata_id"] = row[19]
             data_by_sample_uuid[sample_uuid].append(sample_uuid_element)
     
-            json_str = json.dumps(data_by_sample_uuid, sort_keys=True, indent=4, separators=(',', ': '))
-            print("data_by_sample_uuid json:\n{}".format(json_str))
+        json_str = json.dumps(data_by_sample_uuid, sort_keys=True, indent=4, separators=(',', ': '))
+        print("get_sample_data_from_manifest - data_by_sample_uuid json:\n{}".format(json_str))
     
     return data_by_sample_uuid
 
@@ -153,6 +168,14 @@ def __main__(args):
     options = parse_arguments()
 
     sample_data_binned_by_sample_uuid = get_sample_data_from_manifest(options.in_sample_manifest)
+    hits = create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid)
+
+    coordinator = Fusion_manifest.FusionCoordinator(
+                 'touch_file_bucket', '<myredwoodtoken>', \
+                 'walt.ucsc-cgp-dev.org', 'dockstore_tool_running_dockstore_tool')
+   
+    coordinator.requires(hits)
+
 
 #    if options.align == "local":
 
