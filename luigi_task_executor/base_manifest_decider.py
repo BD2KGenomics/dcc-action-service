@@ -117,6 +117,27 @@ class ConsonanceTask(object):
 
         return dockstore_tool_runner_json
     '''
+    def run_workflow_from_GA4GH_endpoint(self):
+        endpoint = "http://172.31.19.48:8080/ga4gh/wes/v1"
+        get_service_info = "/service-info"
+        headers = {"Authorization":"<consonance token>"}
+        run_workflow_endpoint = "/workflows"
+
+        descriptor= "quay.io/ga4gh-dream/dockstore-tool-helloworld:1.0.2"
+
+        params = '{\n\t"knowngood_file": {\n\t\t"class": "File",\n\t\t"path": "knownoutput.txt"\n\t},\n\t"helloworld_file": {\n\t\t"class": "File",\n\t\t"path": "helloworld.txt"\n\t}\n}'
+
+        workflow_type ="cwl"
+        workflow_type_version="1.0"
+
+        key_values = {'flavour' : 'm3.medium'}
+
+        body = {"workflow_descriptor":descriptor, "workflow_params" : params, "workflow_type": workflow_type,
+                "workflow_type_version": workflow_type_version, "key_values" : key_values}
+
+        print('\n\n!!!! ConsonanceTask:run_workflow_from_GA4GH_endpoint: can post request !!!!!\n\n')
+        #requests.post(endpoint+run_workflow_endpoint,headers=headers, json=body).json()
+
 
 
 
@@ -170,8 +191,8 @@ class ConsonanceTask(object):
         print("** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **")
 
         # create a json for dockstoreRunningDockstoreTool, embed the  JSON as a param
-        p = self.save_dockstore_tool_runner_json().open('w')
-        p_local = self.save_dockstore_tool_runner_json_local().open('w')
+#        p = self.save_dockstore_tool_runner_json().open('w')
+#        p_local = self.save_dockstore_tool_runner_json_local().open('w')
 
         target_tool= cgp_pipeline_job_metadata['target_tool_prefix'] + ":" + self.workflow_version
 
@@ -202,18 +223,21 @@ class ConsonanceTask(object):
         dockstore_tool_runner_json["output_metadata_json"] = "/tmp/final_metadata.json"
 
         dockstore_tool_runner_json_str = json.dumps(dockstore_tool_runner_json , sort_keys=True, indent=4, separators=(',', ': '))
-        print(dockstore_tool_runner_json_str, file=p)
-        p.close()
+        print("ConsonanceTask.run - dockstore_tool_runner_json_str json:\n{}".format(dockstore_tool_runner_json_str))        
+#        print(dockstore_tool_runner_json_str, file=p)
+#        p.close()
     
         # write the parameterized JSON for input to Consonance
         # to a local file since Consonance cannot read files on s3
-        print(dockstore_tool_runner_json_str, file=p_local)
-        p_local.close()
+#        print(dockstore_tool_runner_json_str, file=p_local)
+#        p_local.close()
+
+        self.save_dockstore_tool_runner_json_local(self.local_dockstore_tool_runner_json_file_path, dockstore_tool_runner_json_str)
 
         # execute consonance run, parse the job UUID
 
         cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, \
-                "--flavour", self.vm_instance_type, "--run-descriptor", self.save_dockstore_tool_runner_json_local().path]
+                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
             print("** SUBMITTING TO CONSONANCE **")
@@ -249,25 +273,30 @@ class ConsonanceTask(object):
             print("TEST MODE: Consonance command would be:"+ cmd_str)
             cgp_pipeline_job_metadata["consonance_job_uuid"] = 'no consonance id in test mode'
 
+            #!!!!!!putting this here to print the message that we can hit the http endpoint
+            self.run_workflow_from_GA4GH_endpoint()
+
         #remove the local parameterized JSON file that
         #was created for the Consonance call
         #since the Consonance call is finished
-        self.save_dockstore_tool_runner_json_local().remove()
+        #self.save_dockstore_tool_runner_json_local().remove()
+        os.remove(self.local_dockstore_tool_runner_json_file_path)
 
         #convert the meta data to a string and
         #save the donor metadata for the sample being processed to the touch
         # file directory
         cgp_job_json = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
-        m = self.save_metadata_json().open('w')
-        print(cgp_job_json, file=m)
-        m.close()
+        print('ConsonanceTask:run - cgp_pipeline_job_metadata json:{}'.format(cgp_job_json))
+#        m = self.save_metadata_json().open('w')
+#        print(cgp_job_json, file=m)
+#        m.close()
 
 
          # NOW MAke a final report
-        f = self.output().open('w')
+#        f = self.output().open('w')
         # TODO: could print report on what was successful and what failed?  Also, provide enough details like donor ID etc
-        print("Consonance task is complete", file=f)
-        f.close()
+#        print("Consonance task is complete", file=f)
+#        f.close()
         print("\n\n\n\n** TASK RUN DONE **")
 
     def save_metadata_json(self):
@@ -275,6 +304,11 @@ class ConsonanceTask(object):
 
     def save_dockstore_tool_runner_json_local(self):
         return luigi.LocalTarget(self.local_dockstore_tool_runner_json_file_path)
+
+    def save_dockstore_tool_runner_json_local(self, local_dockstore_tool_runner_json_file_path, dockstore_tool_runner_json):
+            with open(local_dockstore_tool_runner_json_file_path, 'w') as f:
+                f.write(dockstore_tool_runner_json)
+
 
     def save_dockstore_tool_runner_json(self):
         return S3Target(self.s3_dockstore_tool_runner_json_file_path)

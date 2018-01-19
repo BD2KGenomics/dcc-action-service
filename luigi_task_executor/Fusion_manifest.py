@@ -12,7 +12,7 @@ class FusionCoordinator(base_Coordinator):
                  tmp_dir ='/datastore', max_jobs = -1, process_sample_uuids = "", \
                  workflow_version = "", \
                  vm_instance_type ='c4.8xlarge', vm_region ='us-west-2', \
-                 test_mode = False, center = "", program = "", project = ""):
+                 test_mode = True, center = "", program = "", project = ""):
 
 
             base_Coordinator.__init__(self, touch_file_bucket, redwood_token, \

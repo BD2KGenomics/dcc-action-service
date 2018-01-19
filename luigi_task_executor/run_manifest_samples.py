@@ -174,8 +174,10 @@ def __main__(args):
                  'touch_file_bucket', '<myredwoodtoken>', \
                  'walt.ucsc-cgp-dev.org', 'dockstore_tool_running_dockstore_tool')
    
-    coordinator.requires(hits)
+    list_of_jobs = coordinator.requires(hits)
 
+    for job in list_of_jobs:
+        job.run()
 
 #    if options.align == "local":
 
