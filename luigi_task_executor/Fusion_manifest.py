@@ -173,19 +173,13 @@ class FusionCoordinator(base_Coordinator):
             if cgp_pipeline_job_metadata["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
                 cgp_pipeline_job_metadata["parent_uuids"].append(cgp_pipeline_job_metadata["sample_uuid"])
 
-            cgp_pipeline_job_json["outputdir"] = '.'
             cgp_pipeline_job_json["root-ownership"] = True
+            cgp_pipeline_job_json["tar_gz"] = cgp_pipeline_job_metadata["submitter_sample_id"]
             cgp_pipeline_job_json["cpu"] = 32
 
             # Specify the output files here, using the options in the CWL file as keys
-            file_path = "/tmp/star-fusion-gene-list-filtered.final"
-            cgp_pipeline_job_json["output1"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-gene-list-filtered.final.bedpe"
-            cgp_pipeline_job_json["output2"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-non-filtered.final"
-            cgp_pipeline_job_json["output3"] = {"class" : "File", "path" : file_path}
-            file_path = "/tmp/star-fusion-non-filtered.final.bedpe"
-            cgp_pipeline_job_json["output4"] = {"class" : "File", "path" : file_path}
+            file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["output_files"] = {"class" : "File", "path" : file_path}
 
         if 'fastq1' not in cgp_pipeline_job_json.keys() or 'fastq2' not in cgp_pipeline_job_json.keys():
             #we must have paired end reads for the Fusion pipeline so return an empty
@@ -194,6 +188,7 @@ class FusionCoordinator(base_Coordinator):
             return [];
         else:
             return cgp_pipeline_job_json
+
 
 if __name__ == '__main__':
     sys.exit(__main__(sys.argv))
