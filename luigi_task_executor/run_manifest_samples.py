@@ -66,8 +66,8 @@ def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uui
         hit['_source'] = source_element
         hits.append(hit)
 
-    json_str = json.dumps(hits, sort_keys=True, indent=4, separators=(',', ': '))
-    print("create_elastic_search_result_formatted_json - hits json:\n{}".format(json_str))
+    #json_str = json.dumps(hits, sort_keys=True, indent=4, separators=(',', ': '))
+    #print("create_elastic_search_result_formatted_json - hits json:\n{}".format(json_str))
  
     return hits
 
@@ -105,8 +105,8 @@ def get_sample_data_from_manifest(manifest):
             sample_uuid_element["metadata_id"] = row[19]
             data_by_sample_uuid[sample_uuid].append(sample_uuid_element)
     
-        json_str = json.dumps(data_by_sample_uuid, sort_keys=True, indent=4, separators=(',', ': '))
-        print("get_sample_data_from_manifest - data_by_sample_uuid json:\n{}".format(json_str))
+        #json_str = json.dumps(data_by_sample_uuid, sort_keys=True, indent=4, separators=(',', ': '))
+        #print("get_sample_data_from_manifest - data_by_sample_uuid json:\n{}".format(json_str))
     
     return data_by_sample_uuid
 
@@ -119,6 +119,19 @@ def parse_arguments():
 
 #    parser.add_argument( 'in_sample_manifest', nargs='?',type=argparse.FileType('r'), default=sys.stdin, const=sys.stdin, help='Input manifest file in tsv format' )
     parser.add_argument( 'in_sample_manifest',  help='Input manifest file in tsv format' )
+    parser.add_argument( '-t','--storage-token', nargs='?', default="<my storage token>", const="<my storage token>",
+                   type=str, help='Token for accessing the storage server, e.g a3f76853-65jk-8300-9uei-jfdkcu2d22' )
+    parser.add_argument( '-s','--storage-server', nargs='?', default="<my storage server>", const="<my storage server>",
+                   type=str, help='URL for the storage server; e.g. ucsc-cgp-dev.org' )
+    parser.add_argument( '-r','--tool-runner', nargs='?', default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22", \
+                   const="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22",
+                   type=str, help='URL for the storage server; e.g. ucsc-cgp-dev.org' )
+    parser.add_argument('--test-mode', action='store_true',
+                        help='If this flag is used, workflow is not run')
+
+    parser.add_argument( '-v','--workflow_version', nargs='?', default="<workflow version>", \
+                   const="<workflow version",
+                   type=str, help='Version of the pipeline to run; e.g. 0.3.1' )
 
     '''
     parser.add_argument( '-s', '--subst_matrix', nargs='?', type=str, 
@@ -126,8 +139,6 @@ def parse_arguments():
       help='Substitution probability table' )
 
 
-    parser.add_argument( '-a','--align', nargs='?', default="global", const="global",
-                   type=str, help='Specifies either global or local alignment' )
     parser.add_argument( '-o','--open', nargs='?', default=12, const=12, 
                    type=int, help='Gap opening penalty')
     parser.add_argument( '-e','--extend', nargs='?', default=1, const=1, 
@@ -166,20 +177,21 @@ def __main__(args):
     start_time = time.time()    
 
     options = parse_arguments()
+    print("options:{}".format(options))
 
     sample_data_binned_by_sample_uuid = get_sample_data_from_manifest(options.in_sample_manifest)
     hits = create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid)
-
+ 
     coordinator = Fusion_manifest.FusionCoordinator(
-                 'touch_file_bucket', '<myredwoodtoken>', \
-                 'walt.ucsc-cgp-dev.org', 'dockstore_tool_running_dockstore_tool')
+                 'touch_file_bucket', options.storage_token, \
+                 options.storage_server, options.tool_runner, \
+                 workflow_version = options.workflow_version, test_mode = options.test_mode)
    
     list_of_jobs = coordinator.requires(hits)
 
     for job in list_of_jobs:
         job.run()
 
-#    if options.align == "local":
 
     print("----- %s seconds -----" % (time.time() - start_time), file=sys.stderr)
 

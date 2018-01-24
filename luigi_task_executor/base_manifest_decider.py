@@ -237,7 +237,8 @@ class ConsonanceTask(object):
         # execute consonance run, parse the job UUID
 
         cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, \
-                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
+#                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
+                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path, '--extra-file', '/root/.aws/credentials=/home/ubuntu/.aws/credentials=true']
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
             print("** SUBMITTING TO CONSONANCE **")
