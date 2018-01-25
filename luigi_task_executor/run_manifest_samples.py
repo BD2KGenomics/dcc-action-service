@@ -10,6 +10,18 @@ import csv
 from collections import defaultdict
 import json
 
+'''
+Takes the data read from a CGP manifest and creates a dictionary that
+can be converted into the same JSON structure that is returned by
+an Elastic Search query
+
+Input:
+sample_data_binned_by_sample_uuid - the manifest data with samples
+stored in a dict by key sample uuid  
+
+Output:
+A dictionary of samples that can be converted to JSON in Elastic Search format
+'''
 def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid):
     hits = []
     #get the set of files for a sample uuid
@@ -72,7 +84,15 @@ def create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uui
  
     return hits
 
+'''
+Reads a CGP manifest tsv file and stores the data in a dictionary
+with samples stored under keys of sample uuids
 
+Input: manifest - string of path to manifest tsv file 
+
+Output: data_by_sample_uuid - dictionary of sample files stored
+under the sample uuid key
+'''
 def get_sample_data_from_manifest(manifest):
     #open manifest as a tsv file
     with open(manifest, 'rb') as tsvin:
@@ -135,21 +155,8 @@ def parse_arguments():
     parser.add_argument( '-v','--workflow_version', nargs='?', default="<workflow version>", \
                    const="<workflow version",
                    type=str, help='Version of the pipeline to run; e.g. 0.3.1' )
-
-    '''
-    parser.add_argument( '-s', '--subst_matrix', nargs='?', type=str, 
-    default="https://users.soe.ucsc.edu/~karplus/bme205/f15/BLOSUM62",
-      help='Substitution probability table' )
-
-
-    parser.add_argument( '-o','--open', nargs='?', default=12, const=12, 
-                   type=int, help='Gap opening penalty')
-    parser.add_argument( '-e','--extend', nargs='?', default=1, const=1, 
-                             type=int, help='Gap extenstion penalty')
-    parser.add_argument( '-d','--double', nargs='?', default=3, const=3,
-                 type=int, help='Penalty for moving from a gap in one sequence \
-                                            to a gap in another')
-    '''
+    parser.add_argument('-a', '--all-samples-in-one-job', action='store_true',
+                        help='If this flag is used, all samples will be run in one job')
 
     options = parser.parse_args()
     #if options.align != "global" and options.align != "local":
@@ -159,23 +166,19 @@ def parse_arguments():
 
 def __main__(args):
     """
-    The program reads a fasta file from stdin with multiple sequences and outputs
-    an alignment as an A2M file to stdout with the same sequences in the same order,
-    and with the same names and comments on the id lines.
+    The program reads a CGP browser manifest tsv file and creates the parameterized
+    JSON that is passed to the pipeline and embeds that into the paramterized
+    JSON that is passed to the dockstore tool runner.
 
-    The fasta files may have alignment characters in them, like spaces, periods, 
-    and hyphens. These are not part of the sequences and are removed or ignored. 
-    The alphabet for the fasta input is taken to be the characters used as indices
-    in the substitution matrix. Whether letters in the fasta file are upper- or 
-    lower-case is also be ignored. 
+    If not in test mode Consonance is called to spin up a VM and the dockstore
+    tool runner JSON is input so that dockstore tool runner is run on the VM
+    which launches the pipeline with the embedded pipeline JSON. Each job is 
+    queued up by Consonance an run.
 
-    The first sequence of the fasta file is taken to be the "master" sequence
-    and is echoed to stdout. All subsequent sequences are aligned to the first
-    sequence and output to stdout. The score for each alignment is output to stderr.
-
-    The gap penalties are by default open=12, extend=1, double_gap=3.
-
-    The complete output of the program is be a legal A2M file. 
+    The all samples in one job option places all the sample files in one job
+    for autoscaling purposes.
+ 
+    This script requires AWS credentials to be on the host system.
     """
     start_time = time.time()    
 
@@ -190,11 +193,16 @@ def __main__(args):
                  'touch_file_bucket', options.storage_token, \
                  options.storage_server, options.tool_runner, \
                  workflow_version = options.workflow_version, test_mode = options.test_mode)
+        if options.all_samples_in_one_job and not coordinator.supports_multiple_samples_per_job():
+            print('ERROR: The Fusion pipeline does not support all samples in one job; processing will not be started.')
+            sys.exit(1)
     elif options.pipeline == 'RNA-Seq':   
         coordinator = RNASeq_manifest.RNASeqCoordinator(
                  'touch_file_bucket', options.storage_token, \
                  options.storage_server, options.tool_runner, \
-                 workflow_version = options.workflow_version, test_mode = options.test_mode)
+                 workflow_version = options.workflow_version, 
+                 all_samples_in_one_job = options.all_samples_in_one_job, \
+                 test_mode = options.test_mode)
 
     list_of_jobs = coordinator.requires(hits)
 

@@ -23,6 +23,12 @@ class FusionCoordinator(base_Coordinator):
                  vm_instance_type, vm_region, \
                  test_mode, center, program, project)
 
+    '''
+    Return true if we can put multiple samples in the pipeline json
+    '''
+    def supports_multiple_samples_per_job(self):
+        return False
+
 
     '''
     Return a string that is the name that will be used to name the touchfile path
@@ -144,8 +150,8 @@ class FusionCoordinator(base_Coordinator):
 
 
     '''
-    def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis):
-        cgp_pipeline_job_json = defaultdict()
+    def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis, cgp_pipeline_job_json):
+        #cgp_pipeline_job_json = defaultdict()
 
         for file in analysis["workflow_outputs"]:
             print("\nfile type:"+file["file_type"])
@@ -165,8 +171,9 @@ class FusionCoordinator(base_Coordinator):
                 cgp_pipeline_job_json['fastq2'] = {"class" : "File", "path" : file_path}
             else:
                 print("ERROR: Too many input files for Fusion pipeline in analysis output; extra file is:{}!!!".format(file_path), file=sys.stderr)
-                return [];
-
+                cgp_pipeline_job_json.clear()
+                return cgp_pipeline_job_json
+ 
             if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
                 cgp_pipeline_job_metadata["parent_uuids"] = []
                                 
@@ -181,13 +188,16 @@ class FusionCoordinator(base_Coordinator):
             file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
             cgp_pipeline_job_json["output_files"] = {"class" : "File", "path" : file_path}
 
+   
+
         if 'fastq1' not in cgp_pipeline_job_json.keys() or 'fastq2' not in cgp_pipeline_job_json.keys():
             #we must have paired end reads for the Fusion pipeline so return an empty
             #list to indicate an error if we get here
             print("\nERROR: UNABLE TO GET BOTH FASTQ FILES FOR FUSION PIPELINE; INCOMPLETE JSON IS:{}".format(cgp_pipeline_job_json) , file=sys.stderr)
-            return [];
-        else:
+            cgp_pipeline_job_json.clear()
             return cgp_pipeline_job_json
+
+        return cgp_pipeline_job_json
 
 
 if __name__ == '__main__':

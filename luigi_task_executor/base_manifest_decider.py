@@ -11,7 +11,7 @@ from urllib import urlopen
 import os
 import sys
 from collections import defaultdict
-
+import copy
 
 #from elasticsearch import Elasticsearch
 
@@ -24,10 +24,6 @@ import boto
 
 
 class ConsonanceTask(object):
-
-    # TODO : update to reflect pipeline parameters.
-
-#    json_dict = {}
 
     def __init__(self, redwood_host, redwood_token, dockstore_tool_running_dockstore_tool, \
                  cgp_pipeline_job_metadata_str, touch_file_path, metadata_json_file_name, \
@@ -185,7 +181,7 @@ class ConsonanceTask(object):
         # TODO: this is tied to the requirements of the tool being targeted
         
         json_str = json.dumps(cgp_pipeline_job_metadata["pipeline_job_json"], sort_keys=True, indent=4, separators=(',', ': '))
-        print("THE JSON: "+json_str)
+        #print("THE JSON: "+json_str)
         # now make base64 encoded version
         base64_json_str = base64.urlsafe_b64encode(json_str)
         print("** MAKE JSON FOR DOCKSTORE TOOL WRAPPER **")
@@ -286,8 +282,8 @@ class ConsonanceTask(object):
         #convert the meta data to a string and
         #save the donor metadata for the sample being processed to the touch
         # file directory
-        cgp_job_json = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
-        print('ConsonanceTask:run - cgp_pipeline_job_metadata json:{}'.format(cgp_job_json))
+        #cgp_job_json = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+        #print('ConsonanceTask:run - cgp_pipeline_job_metadata json:{}'.format(cgp_job_json))
 #        m = self.save_metadata_json().open('w')
 #        print(cgp_job_json, file=m)
 #        m.close()
@@ -329,7 +325,8 @@ class base_Coordinator(object):
                  tmp_dir ='/datastore', max_jobs = -1, process_sample_uuids = "", \
                  workflow_version = "", \
                  vm_instance_type ='c4.8xlarge', vm_region ='us-west-2', \
-                 test_mode = False, center = "", program = "", project = ""):
+                 test_mode = False, center = "", program = "", project = "", \
+                 all_samples_in_one_job = False):
 
         self.es_index_host = es_index_host
         self.es_index_port = es_index_port
@@ -352,7 +349,7 @@ class base_Coordinator(object):
         self.center = center
         self.program = program
         self.project = project
-    
+        self.all_samples_in_one_job = all_samples_in_one_job 
 
  
     '''
@@ -382,6 +379,12 @@ class base_Coordinator(object):
     bundle_uuid_filename_to_file_uuid = {}
 
     #Classes derived from this class must implement these methods
+    '''
+    Return true if we can put multiple samples in the pipeline json
+    '''     
+    def supports_multiple_samples_per_job(self):
+        raise NotImplementedError('You need to define a supports_multiple_samples_per_job method!')
+
     '''
     Return a string that is the name that will be used to name the touchfile path
 
@@ -495,9 +498,31 @@ class base_Coordinator(object):
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis):
         raise NotImplementedError('You need to define a get_pipeline_parameterized_json method!')
 
+    def update_jobs_metadata(self, cgp_pipeline_job_json, cgp_jobs_reference_files, \
+                            cgp_pipeline_job_metadata, cgp_all_pipeline_jobs_metadata):
+            #attach reference file json to pipeline job json
+            cgp_pipeline_job_json.update(cgp_jobs_reference_files)
+            #print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
+
+            json_str = json.dumps(cgp_pipeline_job_json, sort_keys=True, indent=4, separators=(',', ': '))
+            #print("\nCGP pipeline job json:\n{}".format(json_str))
+
+            #attach the workflow or tool parameterized json to the job metadata
+            cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
+            json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+            #print("\nCGP pipeline job metadata:\n{}".format(json_str))
+
+            #attach this jobs metadata to a list of all the jobs metadata
+            cgp_all_pipeline_jobs_metadata.append(copy.deepcopy(cgp_pipeline_job_metadata))
+            json_str = json.dumps(cgp_all_pipeline_jobs_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+            #print("\nCGP all pipeline jobs meta data:\n{}".format(json_str))
+
+            return cgp_all_pipeline_jobs_metadata 
+
 
     def get_cgp_pipeline_jobs_metadata(self, hits, cgp_jobs_fixed_metadata, cgp_jobs_reference_files):
         cgp_all_pipeline_jobs_metadata = []
+        cgp_pipeline_job_json = defaultdict()
 
         for hit in hits:
             print("\n\n\nDonor uuid:%(donor_uuid)s Center Name:%(center_name)s Program:%(program)s Project:%(project)s" % hit["_source"])
@@ -506,10 +531,13 @@ class base_Coordinator(object):
             #if a particular center, program or project is requested for processing and
             #the current one  does not match go on to the next sample
             if self.center and (self.center != hit["_source"]["center_name"]):
+                print('continuing after center test!!!! center is:{} len is:{}'.format(self.center, len(self.center)))
                 continue
             if self.program and (self.program != hit["_source"]["program"]):
+                print('continuing after program test!!!!')
                 continue
             if self.project and (self.project != hit["_source"]["project"]):
+                print('continuing after project test!!!!')
                 continue
 
 
@@ -538,7 +566,7 @@ class base_Coordinator(object):
                         #This metadata will be passed to the Consonance Task and some
                         #some of the meta data will be used in the Luigi status page for the job
                         cgp_pipeline_job_metadata = defaultdict()
-                        print("constructing pipeline job metadata")    
+                        print("constructing pipeline job metadata")
 
                         #attach fixed metadata to pipeline job json
                         cgp_pipeline_job_metadata.update(cgp_jobs_fixed_metadata)
@@ -604,8 +632,8 @@ class base_Coordinator(object):
                         # remove all whitespace from touch file path
                         #touch_file_path = ''.join(touch_file_path.split())
            
-                        json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': ')) 
-                        print("HIT metadata:\n{}".format(json_str))
+                        #json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': ')) 
+                        #print("HIT metadata:\n{}".format(json_str))
 
                         #If this sample has not already been run through the pipeline add it to the list of jobs
                         if (  (
@@ -632,31 +660,52 @@ class base_Coordinator(object):
                               
                            ):
 
-                            #get the parameterized JSON that is the input to the pipeline registered in Dockstore
-                            cgp_pipeline_job_json = self.get_pipeline_parameterized_json(cgp_pipeline_job_metadata, analysis)
-      
-                            #If the derived pipeline code was unable to construct valid parameterized
-                            #pipeline JSON input file the list will be empty   
-                            if cgp_pipeline_job_json:
-                                #attach reference file json to pipeline job json
-                                cgp_pipeline_job_json.update(cgp_jobs_reference_files)
-                                print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
+                            # if we are putting samples in separate jobs then start with an empty job json information structure
+                            if not self.all_samples_in_one_job:
+                                cgp_pipeline_job_json.clear()
 
-                                json_str = json.dumps(cgp_pipeline_job_json, sort_keys=True, indent=4, separators=(',', ': '))
-                                #print("\nCGP pipeline job json:\n{}".format(json_str))
-        
-                                #attach the workflow or tool parameterized json to the job metadata
-                                cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
-                                json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
-                                #print("\nCGP pipeline job metadata:\n{}".format(json_str))
-        
-                                #attach this jobs metadata to a list of all the jobs metadata
-                                cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
-                                json_str = json.dumps(cgp_all_pipeline_jobs_metadata, sort_keys=True, indent=4, separators=(',', ': '))
-                                #print("\nCGP all pipeline jobs meta data:\n{}".format(json_str))
-                            else:
-                                json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
-                                print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(json_str) , file=sys.stderr)
+                            #get the parameterized JSON that is the input to the pipeline registered in Dockstore
+                            cgp_pipeline_job_json = self.get_pipeline_parameterized_json(cgp_pipeline_job_metadata, analysis, cgp_pipeline_job_json)
+ 
+                            #if there should be a job for each sample then update the jobs 
+                            #metadata with this one sample
+                            if not self.all_samples_in_one_job:
+                                #If the derived pipeline code was unable to construct valid parameterized
+                                #pipeline JSON input file the list will be empty and we don't update
+                                #the jobs metadata
+                                if cgp_pipeline_job_json:
+                                    cgp_all_pipeline_jobs_metadata = self.update_jobs_metadata(cgp_pipeline_job_json, cgp_jobs_reference_files, \
+                                        cgp_pipeline_job_metadata, cgp_all_pipeline_jobs_metadata)
+                                    '''
+                                    #attach reference file json to pipeline job json
+                                    cgp_pipeline_job_json.update(cgp_jobs_reference_files)
+                                    print('keys for cgp pipeline job json:' + ','.join(cgp_pipeline_job_json.keys()))
+    
+                                    json_str = json.dumps(cgp_pipeline_job_json, sort_keys=True, indent=4, separators=(',', ': '))
+                                    #print("\nCGP pipeline job json:\n{}".format(json_str))
+            
+                                    #attach the workflow or tool parameterized json to the job metadata
+                                    cgp_pipeline_job_metadata["pipeline_job_json"] = cgp_pipeline_job_json
+                                    json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                    #print("\nCGP pipeline job metadata:\n{}".format(json_str))
+            
+                                    #attach this jobs metadata to a list of all the jobs metadata
+                                    cgp_all_pipeline_jobs_metadata.append(cgp_pipeline_job_metadata)
+                                    json_str = json.dumps(cgp_all_pipeline_jobs_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                    #print("\nCGP all pipeline jobs meta data:\n{}".format(json_str))
+                                    '''
+                                else:
+                                    json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                                    print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(json_str) , file=sys.stderr)
+        if self.all_samples_in_one_job:
+            if cgp_pipeline_job_json:
+                cgp_all_pipeline_jobs_metadata = self.update_jobs_metadata(cgp_pipeline_job_json, cgp_jobs_reference_files, \
+                                    cgp_pipeline_job_metadata, cgp_all_pipeline_jobs_metadata)
+            else:
+                json_str = json.dumps(cgp_pipeline_job_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+                print("\nWARNING: UNABLE TO GET PARAMETERIZED JSON FOR PIPELINE WITH METADATA:{}".format(json_str) , file=sys.stderr)
+  
+
 
         return cgp_all_pipeline_jobs_metadata
 
@@ -698,7 +747,7 @@ class base_Coordinator(object):
             file_name_metadata = json.loads(file_name_metadata_json)
             if file_name_metadata['totalElements'] == 0:
                 print('ERROR: could not find reference file in storage system!')
-            print("reference file metadata:\n{}".format(str(file_name_metadata)))
+            #print("reference file metadata:\n{}".format(str(file_name_metadata)))
             bundle_uuid = file_name_metadata["content"][0]["gnosId"]
             file_uuid = file_name_metadata["content"][0]["id"]
             file_name = file_name_metadata["content"][0]["fileName"]
@@ -725,6 +774,8 @@ class base_Coordinator(object):
         '''
         
         cgp_pipeline_jobs_metadata = self.get_cgp_pipeline_jobs_metadata(hits, cgp_jobs_fixed_metadata, cgp_jobs_reference_files)
+        #json_str = json.dumps(cgp_pipeline_jobs_metadata, sort_keys=True, indent=4, separators=(',', ': '))
+        #print("\nCGP pipeline jobs meta data after self.get_cgp_pipeline_jobs_metadata call :\n{}".format(json_str))
 
         listOfJobs = []
         #Go through the list of jobs and if the max number of jobs to run has
