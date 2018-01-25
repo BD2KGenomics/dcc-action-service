@@ -109,19 +109,19 @@ class RNASeqCoordinator(base_Coordinator):
                     #be a single read sample
                     if( len(analysis["workflow_outputs"]) == 1):
                         if 'sample-single' not in cgp_pipeline_job_json.keys():
-                            cgp_pipeline_job_json['sample-single'] = defaultdict(dict)
-                        cgp_pipeline_job_json['sample-single'] = {"class" : "File", "path" : file_path}  
+                            cgp_pipeline_job_json['sample-single'] = []
+                        cgp_pipeline_job_json['sample-single'] = [{"class" : "File", "path" : file_path}]
                     #otherwise we must be dealing with paired reads
                     else:
                         paired_files.append(file_path)
                         paired_files_comma_separated = ",".join(paired_files)
                         if 'sample-paired' not in cgp_pipeline_job_json.keys():
-                            cgp_pipeline_job_json['sample-paired'] = defaultdict(dict)
-                        cgp_pipeline_job_json['sample-paired'] = {"class" : "File", "path" : paired_files_comma_separated}
+                            cgp_pipeline_job_json['sample-paired'] = []
+                        cgp_pipeline_job_json['sample-paired'] = [{"class" : "File", "path" : paired_files_comma_separated}]
             elif (file["file_type"] == "fastq.tar"):
                 if 'sample-tar' not in cgp_pipeline_job_json.keys():
-                    cgp_pipeline_job_json['sample-tar'] = defaultdict(dict)
-                cgp_pipeline_job_json['sample-tar'] = {"class" : "File", "path" : file_path}
+                    cgp_pipeline_job_json['sample-tar'] = []
+                cgp_pipeline_job_json['sample-tar'] = [{"class" : "File", "path" : file_path}]
 
 
             if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
@@ -156,12 +156,13 @@ class RNASeqCoordinator(base_Coordinator):
             return [];
         # Make sure an even number of sample files are in a paired sample list
         if 'sample-paired' in cgp_pipeline_json_keys:
-            paired_sample_list = cgp_pipeline_job_json['sample-paired']['path'].split(',')
-            if len(paired_sample_list) % 2 != 0:
-                #we must have an even number of sample pairs for the RNA-Seq pipeline so return an empty
-                #list to indicate an error if we get here
-                print("\nERROR: ODD NUMBER OF INPUT FASTQ FILES IN SAMPLE PAIRS FOR RNA-Seq PIPELINE; INCOMPLETE JSON IS:{}".format(cgp_pipeline_job_json) , file=sys.stderr)
-                return [];
+            for sample in cgp_pipeline_job_json['sample-paired']: 
+                paired_sample_list = sample['path'].split(',')
+                if len(paired_sample_list) % 2 != 0:
+                    #we must have an even number of sample pairs for the RNA-Seq pipeline so return an empty
+                    #list to indicate an error if we get here
+                    print("\nERROR: ODD NUMBER OF INPUT FASTQ FILES IN SAMPLE PAIRS FOR RNA-Seq PIPELINE; INCOMPLETE JSON IS:{}".format(cgp_pipeline_job_json) , file=sys.stderr)
+                    return [];
 
         return cgp_pipeline_job_json
 
