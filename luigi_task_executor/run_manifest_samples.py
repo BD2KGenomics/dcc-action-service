@@ -5,6 +5,7 @@ import argparse
 import time
 import sys
 import Fusion_manifest
+import RNASeq_manifest
 import csv
 from collections import defaultdict
 import json
@@ -128,7 +129,9 @@ def parse_arguments():
                    type=str, help='URL for the storage server; e.g. ucsc-cgp-dev.org' )
     parser.add_argument('--test-mode', action='store_true',
                         help='If this flag is used, workflow is not run')
-
+    parser.add_argument( '-p','--pipeline', nargs='?', default="RNA-Seq", \
+                   const="RNA-Seq",
+                   type=str, help='Name of the pipeline to run; e.g. RNA-Seq' )
     parser.add_argument( '-v','--workflow_version', nargs='?', default="<workflow version>", \
                    const="<workflow version",
                    type=str, help='Version of the pipeline to run; e.g. 0.3.1' )
@@ -181,12 +184,18 @@ def __main__(args):
 
     sample_data_binned_by_sample_uuid = get_sample_data_from_manifest(options.in_sample_manifest)
     hits = create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid)
- 
-    coordinator = Fusion_manifest.FusionCoordinator(
+
+    if options.pipeline == 'Fusion':
+        coordinator = Fusion_manifest.FusionCoordinator(
                  'touch_file_bucket', options.storage_token, \
                  options.storage_server, options.tool_runner, \
                  workflow_version = options.workflow_version, test_mode = options.test_mode)
-   
+    elif options.pipeline == 'RNA-Seq':   
+        coordinator = RNASeq_manifest.RNASeqCoordinator(
+                 'touch_file_bucket', options.storage_token, \
+                 options.storage_server, options.tool_runner, \
+                 workflow_version = options.workflow_version, test_mode = options.test_mode)
+
     list_of_jobs = coordinator.requires(hits)
 
     for job in list_of_jobs:
