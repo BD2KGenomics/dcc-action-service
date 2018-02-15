@@ -21,7 +21,8 @@ import ssl
 #luigi S3 uses boto for AWS credentials
 import boto
 
-
+import ConfigParser
+import requests
 
 class ConsonanceTask(object):
 
@@ -113,28 +114,52 @@ class ConsonanceTask(object):
 
         return dockstore_tool_runner_json
     '''
-    def run_workflow_from_GA4GH_endpoint(self):
+    def run_workflow_from_GA4GH_endpoint(self, dockstore_tool_runner_json):
         endpoint = "http://172.31.19.48:8080/ga4gh/wes/v1"
         get_service_info = "/service-info"
-        headers = {"Authorization":"<consonance token>"}
+
+        config = ConfigParser.ConfigParser()
+        #config.read(args.credentials_file)
+        config.read('/home/ubuntu/.consonance/config')
+        print('credentials file keys:{}'.format(config.sections()))
+        #os.environ['AWS_ACCESS_KEY_ID'] = config.get('default','aws_access_key_id')
+        #os.environ['AWS_SECRET_ACCESS_KEY'] = config.get('default','aws_secret_access_key')
+        #print("OS env vars after config read:\n{}".format(os.environ))
+        consonance_token = config.get('webservice','token')
+
+
+        headers = {"Authorization": 'Bearer {}'.format(consonance_token) }
+        
+
         run_workflow_endpoint = "/workflows"
 
-        descriptor= "quay.io/ga4gh-dream/dockstore-tool-helloworld:1.0.2"
+        #descriptor= "quay.io/ga4gh-dream/dockstore-tool-helloworld:1.0.2"
+        descriptor = self.dockstore_tool_running_dockstore_tool
+        print('descriptor:{}'.format(descriptor)) 
 
-        params = '{\n\t"knowngood_file": {\n\t\t"class": "File",\n\t\t"path": "knownoutput.txt"\n\t},\n\t"helloworld_file": {\n\t\t"class": "File",\n\t\t"path": "helloworld.txt"\n\t}\n}'
+        #params = '{\n\t"knowngood_file": {\n\t\t"class": "File",\n\t\t"path": "knownoutput.txt"\n\t},\n\t"helloworld_file": {\n\t\t"class": "File",\n\t\t"path": "helloworld.txt"\n\t}\n}'
+        params = json.dumps(dockstore_tool_runner_json , sort_keys=True, indent=4, separators=(',', ': '))
+        print('params:{}'.format(params))
 
         workflow_type ="cwl"
         workflow_type_version="1.0"
 
-        key_values = {'flavour' : 'm3.medium'}
+        key_values = {'flavour' : '{}'.format(dockstore_tool_runner_json["vm_instance_type"]) }
+        print('flavour:{}'.format(key_values))
+#        key_values = {'flavour' : 'c4.8xlarge'}
 
         body = {"workflow_descriptor":descriptor, "workflow_params" : params, "workflow_type": workflow_type,
                 "workflow_type_version": workflow_type_version, "key_values" : key_values}
 
-        print('\n\n!!!! ConsonanceTask:run_workflow_from_GA4GH_endpoint: can post request !!!!!\n\n')
-        #requests.post(endpoint+run_workflow_endpoint,headers=headers, json=body).json()
+        print('\n\n!!!! ConsonanceTask:run_workflow_from_GA4GH_endpoint: POST request !!!!!\n\n')
+        request_output = requests.post(endpoint+run_workflow_endpoint,headers=headers, json=body).json()
+        print('POST run workflow output:{}'.format(request_output))
 
 
+        get_service_info = '/service-info'
+        request_output = requests.get(endpoint+get_service_info, headers=headers).json()
+        print('GET service info output:{}'.format(request_output))
+        
 
 
     def run(self):
@@ -233,10 +258,12 @@ class ConsonanceTask(object):
         # execute consonance run, parse the job UUID
 
         cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, \
-#                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
-                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path, '--extra-file', '/root/.aws/credentials=/home/ubuntu/.aws/credentials=true']
+                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
+#                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path, '--extra-file', '/root/.aws/credentials=/home/ubuntu/.aws/credentials=true']
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
+
+            '''
             print("** SUBMITTING TO CONSONANCE **")
             print("executing:"+ cmd_str)
             print("** WAITING FOR CONSONANCE **")
@@ -266,13 +293,15 @@ class ConsonanceTask(object):
                 cgp_pipeline_job_metadata["consonance_job_uuid"] = consonance_output["job_uuid"]
             else:
                 print("ERROR: COULD NOT FIND CONSONANCE JOB UUID IN CONSONANCE OUTPUT!", file=sys.stderr)
+            '''
+
+            self.run_workflow_from_GA4GH_endpoint(dockstore_tool_runner_json)
+            cgp_pipeline_job_metadata["consonance_job_uuid"] = 'no consonance id in manifest mode?????'
+
         else:
             print("TEST MODE: Consonance command would be:"+ cmd_str)
             cgp_pipeline_job_metadata["consonance_job_uuid"] = 'no consonance id in test mode'
-
-            #!!!!!!putting this here to print the message that we can hit the http endpoint
-            self.run_workflow_from_GA4GH_endpoint()
-
+             
         #remove the local parameterized JSON file that
         #was created for the Consonance call
         #since the Consonance call is finished

@@ -153,10 +153,14 @@ def parse_arguments():
                    const="RNA-Seq",
                    type=str, help='Name of the pipeline to run; e.g. RNA-Seq' )
     parser.add_argument( '-v','--workflow_version', nargs='?', default="<workflow version>", \
-                   const="<workflow version",
+                   const="<workflow version>",
                    type=str, help='Version of the pipeline to run; e.g. 0.3.1' )
     parser.add_argument('-a', '--all-samples-in-one-job', action='store_true',
                         help='If this flag is used, all samples will be run in one job')
+    parser.add_argument('-b','--touch-file-bucket', nargs='?', default="<touch file bucket>", \
+                   const="<touch file bucket>",
+                        help='S3 bucket for storing touch files.')
+
 
     options = parser.parse_args()
     #if options.align != "global" and options.align != "local":
@@ -190,7 +194,7 @@ def __main__(args):
 
     if options.pipeline == 'Fusion':
         coordinator = Fusion_manifest.FusionCoordinator(
-                 'touch_file_bucket', options.storage_token, \
+                 options.touch_file_bucket, options.storage_token, \
                  options.storage_server, options.tool_runner, \
                  workflow_version = options.workflow_version, test_mode = options.test_mode)
         if options.all_samples_in_one_job and not coordinator.supports_multiple_samples_per_job():
@@ -198,7 +202,7 @@ def __main__(args):
             sys.exit(1)
     elif options.pipeline == 'RNA-Seq':   
         coordinator = RNASeq_manifest.RNASeqCoordinator(
-                 'touch_file_bucket', options.storage_token, \
+                 options.touch_file_bucket, options.storage_token, \
                  options.storage_server, options.tool_runner, \
                  workflow_version = options.workflow_version, 
                  all_samples_in_one_job = options.all_samples_in_one_job, \

@@ -163,8 +163,9 @@ class RNASeqCoordinator(base_Coordinator):
                 # append the paired sample dict to the paired sample list
                 # if all the samples are being put into one pipeline json
                 # then there will be multiple dicts for each sample pair
-                cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : paired_files_comma_separated})
-
+                #cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : paired_files_comma_separated})
+                for file in paired_files:
+                    cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : file})
 
         #now add the rest of the pipeline json parameters
         #specified by the CWL
@@ -186,8 +187,16 @@ class RNASeqCoordinator(base_Coordinator):
         cgp_pipeline_job_json["output-basename"] = cgp_pipeline_job_metadata["submitter_sample_id"]
 
         # Specify the output files here, using the options in the CWL file as keys
-        file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
-        cgp_pipeline_job_json["output_files"] = [{"class" : "File", "path" : file_path}]
+        tar_file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+        cgp_pipeline_job_json["output_files"] = [ {"class" : "File", "path" : tar_file_path} ]
+
+        if cgp_pipeline_job_json["save-bam"]:
+            bam_file_path = "/tmp/{}.sortedByCoord.md.bam".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["bam_files"] = [ {"class" : "File", "path" : bam_file_path} ]
+
+        if cgp_pipeline_job_json["save-wiggle"]:
+            wiggle_file_path = "/tmp/{}.wiggle.bg".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["wiggle_files"] = [ {"class" : "File", "path" : wiggle_file_path} ]
 
         # Make sure we have a sample file or set of sample files
         a = ['sample-single', 'sample-paired', 'sample-tar']
