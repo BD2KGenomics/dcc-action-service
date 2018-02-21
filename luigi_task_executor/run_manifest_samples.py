@@ -9,6 +9,7 @@ import RNASeq_manifest
 import csv
 from collections import defaultdict
 import json
+import ConfigParser
 
 '''
 Takes the data read from a CGP manifest and creates a dictionary that
@@ -161,6 +162,27 @@ def parse_arguments():
                    const="<touch file bucket>",
                         help='S3 bucket for storing touch files.')
 
+    auto_scale_options  = parser.add_argument_group('Auto-scaling options')
+    auto_scale_options.add_argument('--auto-scale', action='store_true', default=False,                                                                                                                                                                                  help='Enable Toil autoscaling. Disabled by default')
+    auto_scale_options.add_argument('--job-store', default="aws:us-west-2:autoscaling-toil-rnaseq-jobstore-2",
+                        help='Directory in cloud where working files will be put; ' \
+                        'e.g. aws:us-west-2:autoscaling-toil-rnaseq-jobstore')
+    auto_scale_options.add_argument('--cluster-name', default="",
+                        help='Name of the Toil cluster. Usually the security group name')
+    auto_scale_options.add_argument('--output-location', default="s3://toil-rnaseq-cloud-staging-area",
+                        help='Directory in cloud where  output files will be put; e.g. s3://toil-rnaseq-cloud-staging-area')
+    auto_scale_options.add_argument('--provisioner', default="aws",
+                        help='Cloud provisioner to use. E.g aws')
+    auto_scale_options.add_argument('--node-type', default="c3.8xlarge",
+                        help='Cloud worker VM type; e.g. c3.8xlarge')
+    auto_scale_options.add_argument('--max-nodes', type=int, default=2,
+                        help='Maximum worker nodes to launch. E.g. 2')
+    auto_scale_options.add_argument('--credentials-id', default="",
+                        help='Credentials id')
+    auto_scale_options.add_argument('--credentials-secret-key', default="",
+                        help='Credentials secret key')
+    auto_scale_options.add_argument('--credentials-file', default="/home/ubuntu/.aws/credentials",
+                        help='<path/file_name> with access credentials. E.g /ubuntu/.aws/credentials')
 
     options = parser.parse_args()
     #if options.align != "global" and options.align != "local":
@@ -187,10 +209,22 @@ def __main__(args):
     start_time = time.time()    
 
     options = parse_arguments()
-    print("options:{}".format(options))
+    #print("options:{}".format(options))
 
     sample_data_binned_by_sample_uuid = get_sample_data_from_manifest(options.in_sample_manifest)
     hits = create_elastic_search_result_formatted_json(sample_data_binned_by_sample_uuid)
+
+    if options.credentials_id and options.credentials_secret_key:
+        credentials_id = options.credentials_id
+        credentials_secret_key = options.credentials_secret_key
+        #print('getting credentials as separate inputs')
+    elif options.credentials_file:
+        config = ConfigParser.ConfigParser()
+        config.read(options.credentials_file)
+        #print('credentials file keys:{}'.format(config.sections()))
+        credentials_id = config.get('default','aws_access_key_id')
+        credentials_secret_key = config.get('default','aws_secret_access_key')
+
 
     if options.pipeline == 'Fusion':
         coordinator = Fusion_manifest.FusionCoordinator(
@@ -206,7 +240,17 @@ def __main__(args):
                  options.storage_server, options.tool_runner, \
                  workflow_version = options.workflow_version, 
                  all_samples_in_one_job = options.all_samples_in_one_job, \
-                 test_mode = options.test_mode)
+                 test_mode = options.test_mode, \
+                 auto_scale = options.auto_scale, \
+                 job_store = options.job_store, \
+                 cluster_name = options.cluster_name, \
+                 provisioner = options.provisioner, \
+                 output_location = options.output_location, \
+                 max_nodes = options.max_nodes, \
+                 node_type = options.node_type, \
+                 credentials_id = credentials_id, \
+                 credentials_secret_key = credentials_secret_key)
+
 
     list_of_jobs = coordinator.requires(hits)
 

@@ -13,8 +13,12 @@ class RNASeqCoordinator(base_Coordinator):
                  workflow_version = "",\
                  vm_instance_type ='c4.8xlarge', vm_region ='us-west-2', \
                  test_mode = True, center = "", program = "", project = "", \
-                 all_samples_in_one_job = False):
-
+                 all_samples_in_one_job = False, auto_scale = False, \
+                 job_store = "", cluster_name = "", provisioner = "aws", \
+                 output_location = "", \
+                 max_nodes = 1, node_type = "c3.8xlarge", credentials_id = "", \
+                 credentials_secret_key = ""):
+           
 
             base_Coordinator.__init__(self, touch_file_bucket, redwood_token, \
                  redwood_host, dockstore_tool_running_dockstore_tool, \
@@ -24,6 +28,18 @@ class RNASeqCoordinator(base_Coordinator):
                  vm_instance_type, vm_region, \
                  test_mode, center, program, project, \
                  all_samples_in_one_job)
+
+
+
+            self.auto_scale = auto_scale
+            self.job_store = job_store
+            self.cluster_name = cluster_name
+            self.provisioner = provisioner
+            self.output_location =output_location
+            self.max_nodes = max_nodes
+            self.node_type = node_type
+            self.credentials_id = credentials_id
+            self.credentials_secret_key = credentials_secret_key
 
     '''
     Return true if we can put multiple samples in the pipeline json
@@ -94,7 +110,8 @@ class RNASeqCoordinator(base_Coordinator):
     '''
     Edit the following lines to set up the pipeline tool/workflow CWL options. This method
     returns a dictionary of CWL keywords and values that make up the CWL input parameterized
-    JSON for the pipeline. This is the input to the pipeline to be run from Dockstore. 
+    JSON for the pipeline. This is the input to the pipeline to be run from Dockstore.
+    This method is called by base_manifest.py so self is the base_manifest object 
     '''
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis, cgp_pipeline_job_json):
         #cgp_pipeline_job_json = defaultdict()
@@ -197,6 +214,24 @@ class RNASeqCoordinator(base_Coordinator):
         if cgp_pipeline_job_json["save-wiggle"]:
             wiggle_file_path = "/tmp/{}.wiggle.bg".format(cgp_pipeline_job_metadata["submitter_sample_id"])
             cgp_pipeline_job_json["wiggle_files"] = [ {"class" : "File", "path" : wiggle_file_path} ]
+
+
+        #set up options for auto scaling if it is requested
+        #otherwise the extra items are not used
+        #print('!!!! self name:{}'.format(self.__class__.__name__))
+        #from pprint import pprint
+        #pprint(vars(self))
+
+        if self.auto_scale:
+            cgp_pipeline_job_json["auto-scale"] = True
+            cgp_pipeline_job_json["job-store"] = self.job_store
+            cgp_pipeline_job_json["cluster_name"] = self.cluster_name 
+            cgp_pipeline_job_json["provisioner"] = self.provisioner
+            cgp_pipeline_job_json["output-location"] = self.output_location
+            cgp_pipeline_job_json["max-nodes"] = self.max_nodes
+            cgp_pipeline_job_json["node-type"] = self.node_type
+            cgp_pipeline_job_json["credentials-id"] = self.credentials_id
+            cgp_pipeline_job_json["credentials-secret-key"] = self.credentials_secret_key
 
         # Make sure we have a sample file or set of sample files
         a = ['sample-single', 'sample-paired', 'sample-tar']
