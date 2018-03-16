@@ -35,7 +35,7 @@ class RNASeqCoordinator(base_Coordinator):
             self.job_store = job_store
             self.cluster_name = cluster_name
             self.provisioner = provisioner
-            self.output_location =output_location
+            self.output_location = output_location
             self.max_nodes = max_nodes
             self.node_type = node_type
             self.credentials_id = credentials_id
@@ -61,9 +61,18 @@ class RNASeqCoordinator(base_Coordinator):
         cwl_option_to_reference_file_name = defaultdict()        
 
         #Add the correct CWL option and reference file names here
+        '''
+        if self.auto_scale:
+            cwl_option_to_reference_file_name['rsem-path'] = "rsem_ref_hg38_no_alt.tar.gz" 
+            cwl_option_to_reference_file_name['star-path'] = "starIndex_hg38_no_alt.tar.gz" 
+            cwl_option_to_reference_file_name['kallisto-path'] = "kallisto_hg38.idx"
+            cwl_option_to_reference_file_name['hera-path'] = ""
+        else:
+        '''
         cwl_option_to_reference_file_name['rsem'] = "rsem_ref_hg38_no_alt.tar.gz" 
         cwl_option_to_reference_file_name['star'] = "starIndex_hg38_no_alt.tar.gz" 
         cwl_option_to_reference_file_name['kallisto'] = "kallisto_hg38.idx"
+        cwl_option_to_reference_file_name['hera'] = ""
 
         return cwl_option_to_reference_file_name
 
@@ -83,12 +92,12 @@ class RNASeqCoordinator(base_Coordinator):
 
         cgp_pipeline_job_fixed_metadata["input_data_analysis_type"] = "sequence_upload"
         cgp_pipeline_job_fixed_metadata["input_data_experimental_design"] = "RNA-Seq"
-        cgp_pipeline_job_fixed_metadata["normal_missing_item"] = "normal_rna_seq_cgl_workflow_3_2_x" 
-        cgp_pipeline_job_fixed_metadata["normal_present_item"] = "normal_rna_seq_cgl_workflow_3_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_missing_item"] = "tumor_rna_seq_cgl_workflow_3_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_present_item"] = "tumor_rna_seq_cgl_workflow_3_2_x"
-        cgp_pipeline_job_fixed_metadata["normal_metadata_flag"] = "normal_rna_seq_cgl_workflow_3_2_x"
-        cgp_pipeline_job_fixed_metadata["tumor_metadata_flag"] = "tumor_rna_seq_cgl_workflow_3_2_x"
+        cgp_pipeline_job_fixed_metadata["normal_missing_item"] = "normal_rna_seq_cgl_workflow_3_3_x" 
+        cgp_pipeline_job_fixed_metadata["normal_present_item"] = "normal_rna_seq_cgl_workflow_3_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_missing_item"] = "tumor_rna_seq_cgl_workflow_3_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_present_item"] = "tumor_rna_seq_cgl_workflow_3_3_x"
+        cgp_pipeline_job_fixed_metadata["normal_metadata_flag"] = "normal_rna_seq_cgl_workflow_3_3_x"
+        cgp_pipeline_job_fixed_metadata["tumor_metadata_flag"] = "tumor_rna_seq_cgl_workflow_3_3_x"
 
 
         return cgp_pipeline_job_fixed_metadata
@@ -106,6 +115,38 @@ class RNASeqCoordinator(base_Coordinator):
 
         return cgp_pipeline_job_metadata
 
+    def add_sample_info_to_parameterized_json(self, cgp_pipeline_job_metadata, cgp_pipeline_job_json):
+        #now add the rest of the pipeline json parameters
+        #specified by the CWL
+        if 'parent_uuids' not in cgp_pipeline_job_json.keys():
+            cgp_pipeline_job_metadata["parent_uuids"] = []
+        if cgp_pipeline_job_metadata["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
+            cgp_pipeline_job_metadata["parent_uuids"].append(cgp_pipeline_job_metadata["sample_uuid"])
+
+        if 'output_basenames' not in cgp_pipeline_job_json.keys():
+            cgp_pipeline_job_json['output_basenames'] = []
+        cgp_pipeline_job_json["output_basenames"].append(cgp_pipeline_job_metadata["submitter_sample_id"])
+
+        # Specify the output files here, using the options in the CWL file as keys
+        tar_file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+
+        if 'output_files' not in cgp_pipeline_job_json.keys():
+            cgp_pipeline_job_json["output_files"] = []
+        cgp_pipeline_job_json["output_files"].append({"class" : "File", "path" : tar_file_path})
+
+        if cgp_pipeline_job_json["save-bam"]:
+            if 'bam_files' not in cgp_pipeline_job_json.keys():
+                cgp_pipeline_job_json["bam_files"] = []
+            bam_file_path = "/tmp/{}.sortedByCoord.md.bam".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["bam_files"].append({"class" : "File", "path" : bam_file_path})
+
+        if cgp_pipeline_job_json["save-wiggle"]:
+            if 'wiggle_files' not in cgp_pipeline_job_json.keys():
+                cgp_pipeline_job_json["wiggle_files"] = []
+            wiggle_file_path = "/tmp/{}.wiggle.bg".format(cgp_pipeline_job_metadata["submitter_sample_id"])
+            cgp_pipeline_job_json["wiggle_files"].append({"class" : "File", "path" : wiggle_file_path})
+
+
 
     '''
     Edit the following lines to set up the pipeline tool/workflow CWL options. This method
@@ -116,6 +157,16 @@ class RNASeqCoordinator(base_Coordinator):
     def get_pipeline_parameterized_json(self, cgp_pipeline_job_metadata, analysis, cgp_pipeline_job_json):
         #cgp_pipeline_job_json = defaultdict()
 
+        cgp_pipeline_job_json["save-wiggle"] = False
+        cgp_pipeline_job_json["no-clean"] = False
+        cgp_pipeline_job_json["save-bam"] = True
+        cgp_pipeline_job_json["disable-cutadapt"] = False
+        cgp_pipeline_job_json["resume"] = ''
+        cgp_pipeline_job_json["save-wiggle"] = False
+        cgp_pipeline_job_json["cores"] = 32
+        cgp_pipeline_job_json["work-mount"] = '/datastore' 
+        cgp_pipeline_job_json["cores"] = 32
+
         paired_files = []
         for file in analysis["workflow_outputs"]:
             print("\nfile type:"+file["file_type"])
@@ -123,24 +174,41 @@ class RNASeqCoordinator(base_Coordinator):
 
             #if (file["file_type"] != "bam"): output an error message?
 
-            file_path = 'redwood' + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
-                       self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
-                       "/" + file["file_path"]
+            if self.auto_scale:
+                #If auto scaling is used with Toil then toil will download the
+                #reference files so preface the file path with 'redwood_signed_url'
+                #to let dockstore tool runner know it should generate a signed URL
+                #to the storage system
+                file_path_prefix = 'redwood-signed-url'
+            else:
+                file_path_prefix = 'redwood'
+
+            file_path = file_path_prefix + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
+                   self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
+                   "/" + file["file_path"]
 
             if (file["file_type"] == "fastq" or
                 file["file_type"] == "fastq.gz"):
                     #if there is only one sequence upload output then this must
                     #be a single read sample
                     if( len(analysis["workflow_outputs"]) == 1):
-                        if 'sample-single' not in cgp_pipeline_job_json.keys():
-                            cgp_pipeline_job_json['sample-single'] = []
                         #If we get here there is only one single sample file 
                         #in this sequence upload workflow output
-                        # so we can append the dict to the single sample list
+                        # so we can append the dict to the single sample listi
+#                        if self.auto_scale:
+#                            if 'sample-single-paths' not in cgp_pipeline_job_json.keys():
+#                                cgp_pipeline_job_json['sample-single-paths'] = []
+#                            cgp_pipeline_job_json['sample-single-paths'].append(file_path)
+#                        else:
+                        if 'sample-single' not in cgp_pipeline_job_json.keys():
+                            cgp_pipeline_job_json['sample-single'] = []
                         #(there could be multiple single sample file dicts in
                         #the list if we are putting all samples in
                         #one pipeline job json)
                         cgp_pipeline_job_json['sample-single'].append({"class" : "File", "path" : file_path})
+       
+                        self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
+
                     #otherwise we must be dealing with paired reads
                     else:
                         #There are multiple paired read files in the workflow output
@@ -152,6 +220,11 @@ class RNASeqCoordinator(base_Coordinator):
 #                            cgp_pipeline_job_json['sample-paired'] = []
 #                        cgp_pipeline_job_json['sample-paired'] = [{"class" : "File", "path" : paired_files_comma_separated}]
             elif (file["file_type"] == "fastq.tar"):
+#                if self.auto_scale:
+#                     if 'sample-tarp-paths' not in cgp_pipeline_job_json.keys():
+#                        cgp_pipeline_job_json['sample-tar-paths'] = []
+#                    cgp_pipeline_job_json['sample-tar-paths'].append(file_path) 
+#                else:
                 if 'sample-tar' not in cgp_pipeline_job_json.keys():
                     cgp_pipeline_job_json['sample-tar'] = []
                 #If we get here the sequence upload workflow output contains a
@@ -160,6 +233,8 @@ class RNASeqCoordinator(base_Coordinator):
                 #tar file dicts in the list if we are putting all samples in
                 #one pipeline job json)
                 cgp_pipeline_job_json['sample-tar'].append({"class" : "File", "path" : file_path})
+
+                self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
 
 
         #if there are paired end read files and an even number of them
@@ -171,37 +246,38 @@ class RNASeqCoordinator(base_Coordinator):
                      'FOR RNA-Seq PIPELINE; WILL NOT ADD THESE '
                      'SAMPLES:{}'.format(paired_files) , file=sys.stderr)
             else:
-                # create a comma separated string of file paths
-                paired_files_comma_separated = ",".join(paired_files)
+#                if self.auto_scale:
+                    # if there are no paired samples in the pipeline json then
+                    # set up the list to hold them
+#                    if 'sample-paired-paths' not in cgp_pipeline_job_json.keys():
+#                        cgp_pipeline_job_json['sample-paired-paths'] = []
+                    # create a comma separated string of file paths
+#                    paired_files_comma_separated = ",".join(paired_files)
+                    #use the 'sample-paired-paths' key so Dockstore doesn't try to download the files
+                    #For auto scaling the Toil pipeline workers will want to download the files instead                   
+#                    cgp_pipeline_job_json['sample-paired-paths'].append(paired_files_comma_separated)
+#                else 
                 # if there are no paired samples in the pipeline json then
                 # set up the list to hold them
                 if 'sample-paired' not in cgp_pipeline_job_json.keys():
-                       cgp_pipeline_job_json['sample-paired'] = []
-                # append the paired sample dict to the paired sample list
-                # if all the samples are being put into one pipeline json
-                # then there will be multiple dicts for each sample pair
-                #cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : paired_files_comma_separated})
+                    cgp_pipeline_job_json['sample-paired'] = []
                 for file in paired_files:
                     cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : file})
+                        
+                self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
 
         #now add the rest of the pipeline json parameters
         #specified by the CWL
-        if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
-            cgp_pipeline_job_metadata["parent_uuids"] = []
-                            
-        if cgp_pipeline_job_metadata["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
-            cgp_pipeline_job_metadata["parent_uuids"].append(cgp_pipeline_job_metadata["sample_uuid"])
+#        if 'parent_uuids' not in cgp_pipeline_job_metadata.keys():
+#            cgp_pipeline_job_metadata["parent_uuids"] = []
+#        if cgp_pipeline_job_metadata["sample_uuid"] not in cgp_pipeline_job_metadata["parent_uuids"]: 
+#            cgp_pipeline_job_metadata["parent_uuids"].append(cgp_pipeline_job_metadata["sample_uuid"])
 
-        cgp_pipeline_job_json["save-wiggle"] = False
-        cgp_pipeline_job_json["no-clean"] = False
-        cgp_pipeline_job_json["save-bam"] = True
-        cgp_pipeline_job_json["disable-cutadapt"] = False
-        cgp_pipeline_job_json["resume"] = ''
-        cgp_pipeline_job_json["save-wiggle"] = False
-        cgp_pipeline_job_json["cores"] = 32
-        cgp_pipeline_job_json["work-mount"] = '/datastore' 
-        cgp_pipeline_job_json["cores"] = 32
-        cgp_pipeline_job_json["output-basename"] = cgp_pipeline_job_metadata["submitter_sample_id"]
+      
+        '''
+        if 'output_basenames' not in cgp_pipeline_job_json.keys():
+            cgp_pipeline_job_json['output_basenames'] = []
+        cgp_pipeline_job_json["output_basenames"].append(cgp_pipeline_job_metadata["submitter_sample_id"])
 
         # Specify the output files here, using the options in the CWL file as keys
         tar_file_path = "/tmp/{}.tar.gz".format(cgp_pipeline_job_metadata["submitter_sample_id"])
@@ -214,7 +290,7 @@ class RNASeqCoordinator(base_Coordinator):
         if cgp_pipeline_job_json["save-wiggle"]:
             wiggle_file_path = "/tmp/{}.wiggle.bg".format(cgp_pipeline_job_metadata["submitter_sample_id"])
             cgp_pipeline_job_json["wiggle_files"] = [ {"class" : "File", "path" : wiggle_file_path} ]
-
+        '''
 
         #set up options for auto scaling if it is requested
         #otherwise the extra items are not used

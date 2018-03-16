@@ -772,18 +772,33 @@ class base_Coordinator(object):
         #in the storage system so it can be downloaded when the pipeline is run
         for switch, file_name in cwl_option_to_reference_file_name.iteritems():
             print("switch:{} file name {}".format(switch, file_name))
-            file_name_metadata_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName="+file_name), context=ctx).read()
-            file_name_metadata = json.loads(file_name_metadata_json)
-            if file_name_metadata['totalElements'] == 0:
-                print('ERROR: could not find reference file in storage system!')
-            #print("reference file metadata:\n{}".format(str(file_name_metadata)))
-            bundle_uuid = file_name_metadata["content"][0]["gnosId"]
-            file_uuid = file_name_metadata["content"][0]["id"]
-            file_name = file_name_metadata["content"][0]["fileName"]
-
-            ref_file_path = 'redwood' + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
-                        file_uuid + "/" + file_name
-            cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ref_file_path}
+            #if the filename isn't an empty string
+            if file_name:
+                file_name_metadata_json = urlopen(str("https://metadata."+self.redwood_host+"/entities?fileName="+file_name), context=ctx).read()
+                file_name_metadata = json.loads(file_name_metadata_json)
+                if file_name_metadata['totalElements'] == 0:
+                    print('ERROR: could not find reference file in storage system!')
+                #print("reference file metadata:\n{}".format(str(file_name_metadata)))
+                bundle_uuid = file_name_metadata["content"][0]["gnosId"]
+                file_uuid = file_name_metadata["content"][0]["id"]
+                file_name = file_name_metadata["content"][0]["fileName"]
+    
+                if self.auto_scale:
+                    #If auto scaling is used with Toil then toil will download the
+                    #reference files so preface the file path with 'redwood_signed_url'
+                    #to let dockstore tool runner know it should generate a signed URL
+                    #to the storage system
+                    file_path_prefix = 'redwood-signed-url'
+                else:
+                    file_path_prefix = 'redwood'
+    
+                ref_file_path = file_path_prefix + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
+                            file_uuid + "/" + file_name
+                cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ref_file_path}
+            else:
+                #the file path is empty; some pipelines (e.g Toil RNA-Seq) use
+                # this to signal that the reference and or tool is not to be used
+                cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ""}
 
             json_str = json.dumps(cgp_jobs_reference_files[switch], sort_keys=True, indent=4, separators=(',', ': '))
             print("Reference files json:\n{}".format(json_str))
