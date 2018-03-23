@@ -61,18 +61,16 @@ class RNASeqCoordinator(base_Coordinator):
         cwl_option_to_reference_file_name = defaultdict()        
 
         #Add the correct CWL option and reference file names here
-        '''
         if self.auto_scale:
             cwl_option_to_reference_file_name['rsem-path'] = "rsem_ref_hg38_no_alt.tar.gz" 
             cwl_option_to_reference_file_name['star-path'] = "starIndex_hg38_no_alt.tar.gz" 
             cwl_option_to_reference_file_name['kallisto-path'] = "kallisto_hg38.idx"
             cwl_option_to_reference_file_name['hera-path'] = ""
         else:
-        '''
-        cwl_option_to_reference_file_name['rsem'] = "rsem_ref_hg38_no_alt.tar.gz" 
-        cwl_option_to_reference_file_name['star'] = "starIndex_hg38_no_alt.tar.gz" 
-        cwl_option_to_reference_file_name['kallisto'] = "kallisto_hg38.idx"
-        cwl_option_to_reference_file_name['hera'] = ""
+            cwl_option_to_reference_file_name['rsem'] = "rsem_ref_hg38_no_alt.tar.gz" 
+            cwl_option_to_reference_file_name['star'] = "starIndex_hg38_no_alt.tar.gz" 
+            cwl_option_to_reference_file_name['kallisto'] = "kallisto_hg38.idx"
+            cwl_option_to_reference_file_name['hera'] = ""
 
         return cwl_option_to_reference_file_name
 
@@ -174,38 +172,48 @@ class RNASeqCoordinator(base_Coordinator):
 
             #if (file["file_type"] != "bam"): output an error message?
 
-            if self.auto_scale:
+#            if self.auto_scale:
                 #If auto scaling is used with Toil then toil will download the
                 #reference files so preface the file path with 'redwood_signed_url'
                 #to let dockstore tool runner know it should generate a signed URL
                 #to the storage system
-                file_path_prefix = 'redwood-signed-url'
-            else:
-                file_path_prefix = 'redwood'
+#                file_path_prefix = 'redwood-signed-url'
+#            else:
+#                file_path_prefix = 'redwood'
 
+            '''
+            file_path_prefix = 'redwood'
             file_path = file_path_prefix + '://' + self.redwood_host + '/' + analysis['bundle_uuid'] + '/' + \
                    self.fileToUUID(file["file_path"], analysis["bundle_uuid"]) + \
                    "/" + file["file_path"]
+            '''
+
+            bundle_uuid = analysis['bundle_uuid']
+            file_uuid = self.fileToUUID(file["file_path"], analysis["bundle_uuid"])
+            file_name = file["file_path"]
+            file_path = self.get_storage_system_file_path(bundle_uuid, file_uuid, file_name)
 
             if (file["file_type"] == "fastq" or
                 file["file_type"] == "fastq.gz"):
+                    file_path = self.get_storage_system_file_path(bundle_uuid, file_uuid, file_name)
+
                     #if there is only one sequence upload output then this must
                     #be a single read sample
                     if( len(analysis["workflow_outputs"]) == 1):
                         #If we get here there is only one single sample file 
                         #in this sequence upload workflow output
-                        # so we can append the dict to the single sample listi
-#                        if self.auto_scale:
-#                            if 'sample-single-paths' not in cgp_pipeline_job_json.keys():
-#                                cgp_pipeline_job_json['sample-single-paths'] = []
-#                            cgp_pipeline_job_json['sample-single-paths'].append(file_path)
-#                        else:
-                        if 'sample-single' not in cgp_pipeline_job_json.keys():
-                            cgp_pipeline_job_json['sample-single'] = []
-                        #(there could be multiple single sample file dicts in
-                        #the list if we are putting all samples in
-                        #one pipeline job json)
-                        cgp_pipeline_job_json['sample-single'].append({"class" : "File", "path" : file_path})
+                        # so we can append the dict to the single sample list
+                        if self.auto_scale:
+                            if 'sample-single-paths' not in cgp_pipeline_job_json.keys():
+                                cgp_pipeline_job_json['sample-single-paths'] = []
+                            cgp_pipeline_job_json['sample-single-paths'].append(file_path)
+                        else:
+                            if 'sample-single' not in cgp_pipeline_job_json.keys():
+                                cgp_pipeline_job_json['sample-single'] = []
+                            #(there could be multiple single sample file dicts in
+                            #the list if we are putting all samples in
+                            #one pipeline job json)
+                            cgp_pipeline_job_json['sample-single'].append({"class" : "File", "path" : file_path})
        
                         self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
 
@@ -220,19 +228,19 @@ class RNASeqCoordinator(base_Coordinator):
 #                            cgp_pipeline_job_json['sample-paired'] = []
 #                        cgp_pipeline_job_json['sample-paired'] = [{"class" : "File", "path" : paired_files_comma_separated}]
             elif (file["file_type"] == "fastq.tar"):
-#                if self.auto_scale:
-#                     if 'sample-tarp-paths' not in cgp_pipeline_job_json.keys():
-#                        cgp_pipeline_job_json['sample-tar-paths'] = []
-#                    cgp_pipeline_job_json['sample-tar-paths'].append(file_path) 
-#                else:
-                if 'sample-tar' not in cgp_pipeline_job_json.keys():
-                    cgp_pipeline_job_json['sample-tar'] = []
-                #If we get here the sequence upload workflow output contains a
-                #tar file. There should only be one of these so we can append
-                #its dictionary to the tar file list (there could be multiple
-                #tar file dicts in the list if we are putting all samples in
-                #one pipeline job json)
-                cgp_pipeline_job_json['sample-tar'].append({"class" : "File", "path" : file_path})
+                if self.auto_scale:
+                    if 'sample-tarp-paths' not in cgp_pipeline_job_json.keys():
+                        cgp_pipeline_job_json['sample-tar-paths'] = []
+                    cgp_pipeline_job_json['sample-tar-paths'].append(file_path) 
+                else:
+                    if 'sample-tar' not in cgp_pipeline_job_json.keys():
+                        cgp_pipeline_job_json['sample-tar'] = []
+                    #If we get here the sequence upload workflow output contains a
+                    #tar file. There should only be one of these so we can append
+                    #its dictionary to the tar file list (there could be multiple
+                    #tar file dicts in the list if we are putting all samples in
+                    #one pipeline job json)
+                    cgp_pipeline_job_json['sample-tar'].append({"class" : "File", "path" : file_path})
 
                 self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
 
@@ -246,23 +254,23 @@ class RNASeqCoordinator(base_Coordinator):
                      'FOR RNA-Seq PIPELINE; WILL NOT ADD THESE '
                      'SAMPLES:{}'.format(paired_files) , file=sys.stderr)
             else:
-#                if self.auto_scale:
+                if self.auto_scale:
                     # if there are no paired samples in the pipeline json then
                     # set up the list to hold them
-#                    if 'sample-paired-paths' not in cgp_pipeline_job_json.keys():
-#                        cgp_pipeline_job_json['sample-paired-paths'] = []
+                    if 'sample-paired-paths' not in cgp_pipeline_job_json.keys():
+                        cgp_pipeline_job_json['sample-paired-paths'] = []
                     # create a comma separated string of file paths
-#                    paired_files_comma_separated = ",".join(paired_files)
+                    paired_files_comma_separated = ",".join(paired_files)
                     #use the 'sample-paired-paths' key so Dockstore doesn't try to download the files
                     #For auto scaling the Toil pipeline workers will want to download the files instead                   
-#                    cgp_pipeline_job_json['sample-paired-paths'].append(paired_files_comma_separated)
-#                else 
-                # if there are no paired samples in the pipeline json then
-                # set up the list to hold them
-                if 'sample-paired' not in cgp_pipeline_job_json.keys():
-                    cgp_pipeline_job_json['sample-paired'] = []
-                for file in paired_files:
-                    cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : file})
+                    cgp_pipeline_job_json['sample-paired-paths'].append(paired_files_comma_separated)
+                else:
+                    # if there are no paired samples in the pipeline json then
+                    # set up the list to hold them
+                    if 'sample-paired' not in cgp_pipeline_job_json.keys():
+                        cgp_pipeline_job_json['sample-paired'] = []
+                    for file in paired_files:
+                        cgp_pipeline_job_json['sample-paired'].append({"class" : "File", "path" : file})
                         
                 self.add_sample_info_to_parameterized_json(cgp_pipeline_job_metadata, cgp_pipeline_job_json)
 
@@ -309,8 +317,11 @@ class RNASeqCoordinator(base_Coordinator):
             cgp_pipeline_job_json["credentials-id"] = self.credentials_id
             cgp_pipeline_job_json["credentials-secret-key"] = self.credentials_secret_key
 
-        # Make sure we have a sample file or set of sample files
-        a = ['sample-single', 'sample-paired', 'sample-tar']
+        # Make sure we have a sample file or set of sample filesi
+        if self.auto_scale:
+            a = ['sample-single-paths', 'sample-paired-paths', 'sample-tar-paths']
+        else:
+            a = ['sample-single', 'sample-paired', 'sample-tar']
         cgp_pipeline_json_keys = cgp_pipeline_job_json.keys()
         any_in = lambda a, cgp_pipeline_json_keys: any(i in cgp_pipeline_json_keys for i in a)
         if not any_in(a,cgp_pipeline_json_keys):

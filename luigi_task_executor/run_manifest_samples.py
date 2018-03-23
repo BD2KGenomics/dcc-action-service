@@ -145,8 +145,8 @@ def parse_arguments():
                    type=str, help='Token for accessing the storage server, e.g a3f76853-65jk-8300-9uei-jfdkcu2d22' )
     parser.add_argument( '-s','--storage-server', nargs='?', default="<my storage server>", const="<my storage server>",
                    type=str, help='URL for the storage server; e.g. ucsc-cgp-dev.org' )
-    parser.add_argument( '-r','--tool-runner', nargs='?', default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22", \
-                   const="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.22",
+    parser.add_argument( '-r','--tool-runner', nargs='?', default="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.25", \
+                   const="quay.io/ucsc_cgl/dockstore-tool-runner:1.0.25",
                    type=str, help='URL for the storage server; e.g. ucsc-cgp-dev.org' )
     parser.add_argument('--test-mode', action='store_true',
                         help='If this flag is used, workflow is not run')
@@ -169,8 +169,8 @@ def parse_arguments():
                         'e.g. aws:us-west-2:autoscaling-toil-rnaseq-jobstore')
     auto_scale_options.add_argument('--cluster-name', default="",
                         help='Name of the Toil cluster. Usually the security group name')
-    auto_scale_options.add_argument('--output-location', default="s3://toil-rnaseq-cloud-staging-area",
-                        help='Directory in cloud where  output files will be put; e.g. s3://toil-rnaseq-cloud-staging-area')
+    auto_scale_options.add_argument('--output-location', default="toil-rnaseq-cloud-staging-area",
+                        help='Directory in cloud where  output files will be put without "s3://"; e.g. toil-rnaseq-cloud-staging-area')
     auto_scale_options.add_argument('--provisioner', default="aws",
                         help='Cloud provisioner to use. E.g aws')
     auto_scale_options.add_argument('--node-type', default="c3.8xlarge",

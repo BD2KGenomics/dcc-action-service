@@ -29,7 +29,7 @@ class ConsonanceTask(object):
     def __init__(self, redwood_host, redwood_token, dockstore_tool_running_dockstore_tool, \
                  cgp_pipeline_job_metadata_str, touch_file_path, metadata_json_file_name, \
                  workflow_version, file_prefix, vm_instance_type ='c4.8xlarge', \
-                 vm_region = 'us-west-2', tmp_dir = '/datastore', test_mode = False):
+                 vm_region = 'us-west-2', tmp_dir = '/datastore', auto_scale = False, test_mode = False):
 
         self.redwood_host = redwood_host
         self.redwood_token = redwood_token
@@ -45,7 +45,9 @@ class ConsonanceTask(object):
         self.touch_file_path = touch_file_path
         self.metadata_json_file_name = metadata_json_file_name
         self.file_prefix = file_prefix
-    
+
+        #auto scale is set in the pipeline class derived from base_Coordinator
+        self.auto_scale = auto_scale    
         #Consonance will not be called in test mode
         self.test_mode = test_mode
     
@@ -218,6 +220,11 @@ class ConsonanceTask(object):
         target_tool= cgp_pipeline_job_metadata['target_tool_prefix'] + ":" + self.workflow_version
 
         dockstore_tool_runner_json = {}
+        #If auto scaling is used with Toil then toil will download the
+        #to let dockstore tool runner know it should generate a signed URL
+        #to the storage system
+        if self.auto_scale:
+            dockstore_tool_runner_json["use_signed_urls"] = True
         dockstore_tool_runner_json["program_name"] = cgp_pipeline_job_metadata["program"].replace(' ','_')
         dockstore_tool_runner_json["json_encoded"] = base64_json_str
         dockstore_tool_runner_json["docker_uri"] = target_tool
@@ -406,6 +413,64 @@ class base_Coordinator(object):
     '''
 
     bundle_uuid_filename_to_file_uuid = {}
+
+
+
+
+    def run_command(self, command_string, max_attempts, delay_in_seconds, ignore_errors=False, cwd='.'):
+        print(command_string)
+        #command must be formatted as a list of strings; e.g.
+        #command = ["dockstore", "tool", "launch", "--debug", "--entry", self.docker_uri, "--json", "transformed_json_path"]
+        command = command_string.split()
+        print("command list object:")
+        print(command)
+        for attempt_number in range(1, max_attempts+1):
+            if attempt_number > 1:
+                #we are about to retry the command, but sleep for a number of seconds before retrying
+                print("Waiting for "+str(delay_in_seconds)+" seconds before retrying")
+                time.sleep(delay_in_seconds)
+
+            print("\nDockstore tool runner executing command: " + command_string)
+            print("Attempt number "+str(attempt_number)+" of "+str(max_attempts))
+            try:
+                cmd_output = subprocess.check_output(command, cwd=cwd)
+            except subprocess.CalledProcessError as e:
+                #If we get here then the called command return code was non zero
+                print("\nERROR!!! DOCKSTORE TOOL RUNNER CMD:" + command_string + " FAILED !!!", file=sys.stderr)
+                print("\nReturn code:" + str(e.returncode), file=sys.stderr)
+                print("\nOutput:" + str(e.output), file=sys.stderr)
+                return_code = e.returncode
+                cmd_output = e.output
+                if ignore_errors:
+                    break;
+            except Exception as e:
+                print("\nERROR!!! DOCKSTORE TOOL RUNNER CMD:" + command_string + " THREW AN EXCEPTION !!!", file=sys.stderr)
+                print("\nException information:" + str(e), file=sys.stderr)
+                #if we get here the called command threw an exception other than just
+                #returning a non zero return code, so just set the return code to 1.
+                return_code = 1
+                cmd_output = ""
+                if ignore_errors:
+                    break;
+            #in try constructs, the else block runs if no exception happened
+            #which in this case indicates the command succeeded
+            else:
+                print("CMD "+ command_string + " SUCCESSFUL IN DOCKSTORE TOOL RUNNER!!")
+                return_code = 0
+                #break out of the retry loop since the command was successful
+                break;
+        #the else block is executed if the loop didn't exit abnormally (i.e. with break in
+        #the try: else: statement that indicates the command was successful
+        else:
+            if not ignore_errors:
+                print("Exiting Dockstore tool runner due to call error in command "+command_string+" after "+str(max_attempts)+" attempts", file=sys.stderr)
+                sys.exit(return_code)
+            else:
+                print ("There were errors in the call to command "+command_string+" after "+str(max_attempts)+" attempts but ignore_errors=True so ignoring ", file=sys.stderr)
+        return cmd_output
+
+
+
 
     #Classes derived from this class must implement these methods
     '''
@@ -738,6 +803,31 @@ class base_Coordinator(object):
 
         return cgp_all_pipeline_jobs_metadata
 
+    def get_storage_system_file_path(self, bundle_uuid, file_uuid, 
+                           file_path, file_path_prefix = 'redwood'):
+        if self.auto_scale:
+            #If auto scaling is used with Toil then toil will download the
+            #reference files so preface the file path with 'redwood_signed_url'
+            #to let dockstore tool runner know it should generate a signed URL
+            #to the storage system
+#                    file_path_prefix = 'redwood-signed-url'
+
+            cmd = "docker run --rm -it -e ACCESS_TOKEN={} -e REDWOOD_ENDPOINT={}  quay.io/ucsc_cgl/core-client:1.1.2 icgc-storage-client url --object-id {}".format(self.redwood_token, self.redwood_host, file_uuid)
+#                    cmd = "icgc-storage-client download --output-dir {} --object-id {} --output-layout bundle --force".format(self.tmp_dir, file_uuid)
+            #create list of individual command 'words' for input to run commmand function
+            cmd_output = self.run_command(cmd, 3, 5)
+            #get the list of strings in the output that begin with https
+            # which should be the signed URL
+            search_object = re.search(r'https://.*', cmd_output, re.MULTILINE)
+            signed_url = search_object.group(0).rstrip()
+            print('base_manifest - self signed url is:{}'.format(signed_url))
+            file_path = signed_url
+
+        else:
+            file_path = file_path_prefix + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
+                    file_uuid + "/" + file_name
+        return file_path       
+
     def requires(self, hits):
         print("\n\n\n\n** COORDINATOR REQUIRES **")
 
@@ -783,22 +873,40 @@ class base_Coordinator(object):
                 file_uuid = file_name_metadata["content"][0]["id"]
                 file_name = file_name_metadata["content"][0]["fileName"]
     
+                file_path = self.get_storage_system_file_path(bundle_uuid, file_uuid, file_name)
+                ''' 
                 if self.auto_scale:
                     #If auto scaling is used with Toil then toil will download the
                     #reference files so preface the file path with 'redwood_signed_url'
                     #to let dockstore tool runner know it should generate a signed URL
                     #to the storage system
-                    file_path_prefix = 'redwood-signed-url'
+#                    file_path_prefix = 'redwood-signed-url'
+
+                    cmd = "docker run --rm -it -e ACCESS_TOKEN={} -e REDWOOD_ENDPOINT={}  quay.io/ucsc_cgl/core-client:1.1.2 icgc-storage-client url --object-id {}".format(self.redwood_token, self.redwood_host, file_uuid)
+#                    cmd = "icgc-storage-client download --output-dir {} --object-id {} --output-layout bundle --force".format(self.tmp_dir, file_uuid)
+                    #create list of individual command 'words' for input to run commmand function
+                    signed_url = self.run_command(cmd, 3, 5)
+                    print('base_manifest - self signed url is:{}'.format(signed_url))
+                    cgp_jobs_reference_files[switch] = signed_url
+
                 else:
                     file_path_prefix = 'redwood'
-    
-                ref_file_path = file_path_prefix + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
+                    ref_file_path = file_path_prefix + '://' + self.redwood_host + '/' + bundle_uuid + '/' + \
                             file_uuid + "/" + file_name
-                cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ref_file_path}
+                    cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ref_file_path}
+                '''
+                if self.auto_scale:
+                    cgp_jobs_reference_files[switch] = file_path
+                else:
+                    cgp_jobs_reference_files[switch] = {"class" : "File", "path" : file_path}
+
             else:
                 #the file path is empty; some pipelines (e.g Toil RNA-Seq) use
                 # this to signal that the reference and or tool is not to be used
-                cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ""}
+                if self.auto_scale:
+                   cgp_jobs_reference_files[switch] = ""
+                else:
+                   cgp_jobs_reference_files[switch] = {"class" : "File", "path" : ""}
 
             json_str = json.dumps(cgp_jobs_reference_files[switch], sort_keys=True, indent=4, separators=(',', ': '))
             print("Reference files json:\n{}".format(json_str))
@@ -842,6 +950,7 @@ class base_Coordinator(object):
                     metadata_json_file_name = job['metadata_json_file_name'],
                     touch_file_path = job['touch_file_path'],
                     file_prefix = job['file_prefix'],
+                    auto_scale = self.auto_scale,
                     test_mode=self.test_mode))
 
             
