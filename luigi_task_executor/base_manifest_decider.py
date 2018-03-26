@@ -263,14 +263,13 @@ class ConsonanceTask(object):
         self.save_dockstore_tool_runner_json_local(self.local_dockstore_tool_runner_json_file_path, dockstore_tool_runner_json_str)
 
         # execute consonance run, parse the job UUID
-
+        #cmd = ["dockstore", dockstore_tool_runner_json["launch_type"], "launch", "--entry", self.dockstore_tool_running_dockstore_tool, "--json", self.local_dockstore_tool_runner_json_file_path]
         cmd = ["consonance", "run",  "--tool-dockstore-id", self.dockstore_tool_running_dockstore_tool, \
                 "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path]
 #                "--flavour", self.vm_instance_type, "--run-descriptor", self.local_dockstore_tool_runner_json_file_path, '--extra-file', '/root/.aws/credentials=/home/ubuntu/.aws/credentials=true']
         cmd_str = ' '.join(cmd)
         if self.test_mode == False:
 
-            '''
             print("** SUBMITTING TO CONSONANCE **")
             print("executing:"+ cmd_str)
             print("** WAITING FOR CONSONANCE **")
@@ -300,10 +299,14 @@ class ConsonanceTask(object):
                 cgp_pipeline_job_metadata["consonance_job_uuid"] = consonance_output["job_uuid"]
             else:
                 print("ERROR: COULD NOT FIND CONSONANCE JOB UUID IN CONSONANCE OUTPUT!", file=sys.stderr)
-            '''
+         
 
+
+            '''
             self.run_workflow_from_GA4GH_endpoint(dockstore_tool_runner_json)
             cgp_pipeline_job_metadata["consonance_job_uuid"] = 'no consonance id in manifest mode?????'
+            '''
+
 
         else:
             print("TEST MODE: Consonance command would be:"+ cmd_str)
@@ -804,7 +807,7 @@ class base_Coordinator(object):
         return cgp_all_pipeline_jobs_metadata
 
     def get_storage_system_file_path(self, bundle_uuid, file_uuid, 
-                           file_path, file_path_prefix = 'redwood'):
+                           file_name, file_path_prefix = 'redwood'):
         if self.auto_scale:
             #If auto scaling is used with Toil then toil will download the
             #reference files so preface the file path with 'redwood_signed_url'

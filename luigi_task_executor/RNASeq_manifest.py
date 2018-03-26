@@ -264,6 +264,7 @@ class RNASeqCoordinator(base_Coordinator):
                     #use the 'sample-paired-paths' key so Dockstore doesn't try to download the files
                     #For auto scaling the Toil pipeline workers will want to download the files instead                   
                     cgp_pipeline_job_json['sample-paired-paths'].append(paired_files_comma_separated)
+                    #cgp_pipeline_job_json['sample-paired-paths'].append(paired_files)
                 else:
                     # if there are no paired samples in the pipeline json then
                     # set up the list to hold them
